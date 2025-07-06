@@ -1,85 +1,120 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, Save, ArrowLeft } from "lucide-react"
+import { Plus, Trash2, Save, ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Loading } from "@/components/shared/loading"
 import { formatCurrency } from "@/lib/utils"
-
-interface SupplierService {
-  id: string
-  serviceType: string
-  serviceName: string
-  description: string
-  cost: number
-  currency: string
-  isActive: boolean
-}
-
-interface SupplierFormData {
-  name: string
-  contactEmail: string
-  contactPhone: string
-  address: string
-  city: string
-  country: string
-  supplierType: string
-  services: SupplierService[]
-}
+import { useApi } from "@/hooks/use-api"
+import { supplierService } from "@/services/supplierService"
+import { 
+  SupplierResponseDto, 
+  CreateSupplierDto, 
+  UpdateSupplierDto,
+  SupplierType,
+  PaymentTerms,
+  getSupplierTypeText,
+  getPaymentTermsText
+} from "@/types/supplier"
 
 interface SupplierFormProps {
   tenant: string
+  supplierId?: string // For editing
   isEditing?: boolean
-  initialData?: Partial<SupplierFormData>
 }
 
-export function SupplierForm({ tenant, isEditing = false, initialData }: SupplierFormProps) {
+export function SupplierForm({ tenant, supplierId, isEditing = false }: SupplierFormProps) {
   const router = useRouter()
-  const [formData, setFormData] = useState<SupplierFormData>({
-    name: initialData?.name || "",
-    contactEmail: initialData?.contactEmail || "",
-    contactPhone: initialData?.contactPhone || "",
-    address: initialData?.address || "",
-    city: initialData?.city || "",
-    country: initialData?.country || "Colombia",
-    supplierType: initialData?.supplierType || "",
-    services: initialData?.services || []
+  const [formData, setFormData] = useState<CreateSupplierDto>({
+    name: "",
+    supplierType: "",
+    description: "",
+    contactPerson: "",
+    email: "",
+    phone: "",
+    alternativePhone: "",
+    website: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "Colombia",
+    postalCode: "",
+    taxId: "",
+    bankAccount: "",
+    paymentTerms: PaymentTerms.Net30,
+    creditLimit: 0,
+    currency: "COP",
+    isPreferred: false,
+    notes: "",
+    tags: []
   })
 
+  const [newTag, setNewTag] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [supplierTypes, setSupplierTypes] = useState<string[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(false)
 
-  const addService = () => {
-    const newService: SupplierService = {
-      id: Date.now().toString(),
-      serviceType: "Alojamiento",
-      serviceName: "",
-      description: "",
-      cost: 0,
-      currency: "COP",
-      isActive: true
+  // Load existing supplier data if editing
+  const { data: existingSupplier, loading: loadingSupplier, error } = useApi<SupplierResponseDto>(
+    () => supplierId ? supplierService.getSupplierById(supplierId) : Promise.resolve(null as any),
+    [supplierId]
+  )
+
+  // Load form options
+  useEffect(() => {
+    loadFormOptions()
+  }, [])
+
+  // Set form data when editing
+  useEffect(() => {
+    if (isEditing && existingSupplier) {
+      setFormData({
+        name: existingSupplier.name,
+        supplierType: existingSupplier.supplierType,
+        description: existingSupplier.description || "",
+        contactPerson: existingSupplier.contactPerson,
+        email: existingSupplier.email,
+        phone: existingSupplier.phone,
+        alternativePhone: existingSupplier.alternativePhone || "",
+        website: existingSupplier.website || "",
+        address: existingSupplier.address,
+        city: existingSupplier.city,
+        state: existingSupplier.state || "",
+        country: existingSupplier.country,
+        postalCode: existingSupplier.postalCode || "",
+        taxId: existingSupplier.taxId || "",
+        bankAccount: existingSupplier.bankAccount || "",
+        paymentTerms: existingSupplier.paymentTerms,
+        creditLimit: existingSupplier.creditLimit || 0,
+        currency: existingSupplier.currency,
+        isPreferred: existingSupplier.isPreferred,
+        notes: existingSupplier.notes || "",
+        tags: existingSupplier.tags || []
+      })
     }
-    setFormData(prev => ({
-      ...prev,
-      services: [...prev.services, newService]
-    }))
-  }
+  }, [isEditing, existingSupplier])
 
-  const updateService = (id: string, field: keyof SupplierService, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      services: prev.services.map(service =>
-        service.id === id ? { ...service, [field]: value } : service
-      )
-    }))
-  }
-
-  const removeService = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      services: prev.services.filter(service => service.id !== id)
-    }))
+  const loadFormOptions = async () => {
+    setLoadingOptions(true)
+    try {
+      const supplierTypesData = await supplierService.getSupplierTypes()
+      setSupplierTypes(supplierTypesData.filter(type => type && type.trim() !== ''))
+    } catch (error) {
+      console.error('Error loading form options:', error)
+      setSupplierTypes([])
+    } finally {
+      setLoadingOptions(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,14 +122,32 @@ export function SupplierForm({ tenant, isEditing = false, initialData }: Supplie
     setIsLoading(true)
 
     try {
-      console.log('Saving supplier:', formData)
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (isEditing && supplierId) {
+        const updateData: UpdateSupplierDto = formData
+        await supplierService.updateSupplier(supplierId, updateData)
+      } else {
+        await supplierService.createSupplier(formData)
+      }
       router.push(`/${tenant}/suppliers`)
     } catch (error) {
       console.error('Error saving supplier:', error)
+      alert('Error al guardar el proveedor. Por favor intenta de nuevo.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (loadingSupplier) return <Loading message="Cargando proveedor..." />
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={() => router.push(`/${tenant}/suppliers`)} variant="outline" className="mt-2">
+          Volver a Proveedores
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -123,12 +176,12 @@ export function SupplierForm({ tenant, isEditing = false, initialData }: Supplie
         {/* Basic Information */}
         <Card>
           <CardHeader>
-            <CardTitle>Información del Proveedor</CardTitle>
+            <CardTitle>Información Básica</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Nombre de la Empresa *</label>
+                <label className="text-sm font-medium mb-2 block">Nombre de la Empresa *</label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -137,57 +190,109 @@ export function SupplierForm({ tenant, isEditing = false, initialData }: Supplie
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Tipo de Proveedor *</label>
-                <select
-                  value={formData.supplierType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, supplierType: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
-                >
-                  <option value="">Seleccionar tipo</option>
-                  <option value="Alojamiento">Alojamiento</option>
-                  <option value="Transporte">Transporte</option>
-                  <option value="Actividades">Actividades</option>
-                  <option value="Alimentación">Alimentación</option>
-                  <option value="Seguros">Seguros</option>
-                  <option value="Guías">Guías Turísticos</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Email de Contacto *</label>
-                <Input
-                  type="email"
-                  value={formData.contactEmail}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
-                  placeholder="contacto@proveedor.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Teléfono de Contacto</label>
-                <Input
-                  value={formData.contactPhone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
-                  placeholder="+57 5 123 4567"
-                />
+                <label className="text-sm font-medium mb-2 block">Tipo de Proveedor *</label>
+                {loadingOptions ? (
+                  <Input placeholder="Cargando tipos..." disabled />
+                ) : (
+                  <Select
+                    value={formData.supplierType}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, supplierType: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {supplierTypes.map(type => (
+                        <SelectItem key={type} value={type}>{getSupplierTypeText(type)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium">Dirección</label>
-              <Input
-                value={formData.address}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                placeholder="Calle 10 #15-20"
+              <label className="text-sm font-medium mb-2 block">Descripción</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none"
+                placeholder="Descripción del proveedor y sus servicios..."
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Ciudad *</label>
+                <label className="text-sm font-medium mb-2 block">Persona de Contacto *</label>
+                <Input
+                  value={formData.contactPerson}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
+                  placeholder="Nombre del contacto principal"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Sitio Web</label>
+                <Input
+                  value={formData.website}
+                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                  placeholder="https://www.empresa.com"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contact Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Información de Contacto</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Email Principal *</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="contacto@proveedor.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Teléfono Principal *</label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+57 5 123 4567"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Teléfono Alternativo</label>
+              <Input
+                value={formData.alternativePhone}
+                onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
+                placeholder="+57 300 123 4567"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Dirección *</label>
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Calle 10 #15-20"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Ciudad *</label>
                 <Input
                   value={formData.city}
                   onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
@@ -196,134 +301,160 @@ export function SupplierForm({ tenant, isEditing = false, initialData }: Supplie
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">País</label>
+                <label className="text-sm font-medium mb-2 block">Estado/Departamento</label>
+                <Input
+                  value={formData.state}
+                  onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                  placeholder="Bolívar"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">País *</label>
                 <Input
                   value={formData.country}
                   onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Código Postal</label>
+                <Input
+                  value={formData.postalCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
+                  placeholder="130001"
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Services */}
+        {/* Financial Information */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Servicios Ofrecidos</CardTitle>
-              <Button type="button" onClick={addService} size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Agregar Servicio
-              </Button>
+            <CardTitle>Información Financiera</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">NIT/RUT</label>
+                <Input
+                  value={formData.taxId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, taxId: e.target.value }))}
+                  placeholder="123456789-0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Cuenta Bancaria</label>
+                <Input
+                  value={formData.bankAccount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bankAccount: e.target.value }))}
+                  placeholder="Número de cuenta"
+                />
+              </div>
             </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Términos de Pago</label>
+                <Select
+                  value={formData.paymentTerms}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, paymentTerms: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PaymentTerms.Immediate}>Inmediato</SelectItem>
+                    <SelectItem value={PaymentTerms.Net15}>Net 15</SelectItem>
+                    <SelectItem value={PaymentTerms.Net30}>Net 30</SelectItem>
+                    <SelectItem value={PaymentTerms.Net60}>Net 60</SelectItem>
+                    <SelectItem value={PaymentTerms.Net90}>Net 90</SelectItem>
+                    <SelectItem value={PaymentTerms.Custom}>Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Límite de Crédito</label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.creditLimit}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, creditLimit: parseFloat(e.target.value) || 0 
+                  }))}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Moneda</label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COP">COP - Pesos Colombianos</SelectItem>
+                    <SelectItem value="USD">USD - Dólares</SelectItem>
+                    <SelectItem value="EUR">EUR - Euros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isPreferred"
+                checked={formData.isPreferred}
+                onChange={(e) => setFormData(prev => ({ ...prev, isPreferred: e.target.checked }))}
+                className="rounded border-gray-300"
+              />
+              <label htmlFor="isPreferred" className="text-sm font-medium">
+                Marcar como proveedor preferido
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Notas Adicionales</CardTitle>
           </CardHeader>
           <CardContent>
-            {formData.services.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                No hay servicios agregados. Haz clic en "Agregar Servicio" para comenzar.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {formData.services.map((service) => (
-                  <div key={service.id} className="border rounded-lg p-4 space-y-4">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Servicio #{service.id}</h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeService(service.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Tipo de Servicio</label>
-                        <select
-                          value={service.serviceType}
-                          onChange={(e) => updateService(service.id, 'serviceType', e.target.value)}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="Alojamiento">Alojamiento</option>
-                          <option value="Transporte">Transporte</option>
-                          <option value="Actividades">Actividades</option>
-                          <option value="Alimentación">Alimentación</option>
-                          <option value="Seguros">Seguros</option>
-                          <option value="Guías">Guías</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Nombre del Servicio</label>
-                        <Input
-                          value={service.serviceName}
-                          onChange={(e) => updateService(service.id, 'serviceName', e.target.value)}
-                          placeholder="Ej: Habitación Doble Standard"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium">Descripción</label>
-                      <Input
-                        value={service.description}
-                        onChange={(e) => updateService(service.id, 'description', e.target.value)}
-                        placeholder="Describe el servicio detalladamente..."
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Costo</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={service.cost}
-                          onChange={(e) => updateService(service.id, 'cost', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Moneda</label>
-                        <select
-                          value={service.currency}
-                          onChange={(e) => updateService(service.id, 'currency', e.target.value)}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="COP">COP - Pesos Colombianos</option>
-                          <option value="USD">USD - Dólares</option>
-                        </select>
-                      </div>
-                      <div className="flex items-end">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={service.isActive}
-                            onChange={(e) => updateService(service.id, 'isActive', e.target.checked)}
-                            className="rounded border-gray-300"
-                          />
-                          <span className="text-sm">Servicio activo</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[100px] resize-none"
+              placeholder="Notas adicionales sobre el proveedor..."
+            />
           </CardContent>
         </Card>
 
         {/* Actions */}
         <div className="flex space-x-4">
           <Button type="submit" disabled={isLoading} className="flex-1">
-            <Save className="mr-2 h-4 w-4" />
-            {isLoading ? "Guardando..." : isEditing ? "Actualizar Proveedor" : "Crear Proveedor"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                {isEditing ? "Actualizar Proveedor" : "Crear Proveedor"}
+              </>
+            )}
           </Button>
           <Button 
             type="button" 
             variant="outline" 
             onClick={() => router.push(`/${tenant}/suppliers`)}
             className="flex-1"
+            disabled={isLoading}
           >
             Cancelar
           </Button>

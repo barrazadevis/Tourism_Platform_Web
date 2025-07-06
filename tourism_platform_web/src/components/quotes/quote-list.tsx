@@ -15,63 +15,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Loading } from "@/components/shared/loading"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { useApi } from "@/hooks/use-api"
+import { quoteService, QuoteResponse } from "@/services/quotes"
 
-interface Quote {
-  id: string
-  quoteNumber: string
-  customerName: string
-  destination: string
-  departureDate: string
-  returnDate: string
-  totalAmount: number
-  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'expired' | 'converted'
-  validUntil: string
-  createdAt: string
-}
-
-// Datos de ejemplo
-const mockQuotes: Quote[] = [
-  {
-    id: "1",
-    quoteNumber: "QT-202401-0001",
-    customerName: "María González",
-    destination: "Cartagena",
-    departureDate: "2024-03-15",
-    returnDate: "2024-03-19",
-    totalAmount: 2500000,
-    status: "approved",
-    validUntil: "2024-02-15",
-    createdAt: "2024-01-15"
-  },
-  {
-    id: "2",
-    quoteNumber: "QT-202401-0002", 
-    customerName: "Carlos Ruiz",
-    destination: "San Andrés",
-    departureDate: "2024-04-10",
-    returnDate: "2024-04-17",
-    totalAmount: 3200000,
-    status: "pending",
-    validUntil: "2024-02-20",
-    createdAt: "2024-01-20"
-  },
-  {
-    id: "3",
-    quoteNumber: "QT-202401-0003",
-    customerName: "Ana Martínez", 
-    destination: "Medellín",
-    departureDate: "2024-05-01",
-    returnDate: "2024-05-05",
-    totalAmount: 1800000,
-    status: "draft",
-    validUntil: "2024-03-01",
-    createdAt: "2024-02-01"
-  }
-]
-
-const getStatusColor = (status: Quote['status']) => {
-  switch (status) {
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
     case 'draft': return 'bg-gray-100 text-gray-800'
     case 'pending': return 'bg-yellow-100 text-yellow-800'
     case 'approved': return 'bg-green-100 text-green-800'
@@ -82,8 +32,8 @@ const getStatusColor = (status: Quote['status']) => {
   }
 }
 
-const getStatusText = (status: Quote['status']) => {
-  switch (status) {
+const getStatusText = (status: string) => {
+  switch (status.toLowerCase()) {
     case 'draft': return 'Borrador'
     case 'pending': return 'Pendiente'
     case 'approved': return 'Aprobada'
@@ -100,13 +50,31 @@ interface QuoteListProps {
 
 export function QuoteList({ tenant }: QuoteListProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [quotes] = useState<Quote[]>(mockQuotes)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
 
-  const filteredQuotes = quotes.filter(quote =>
-    quote.quoteNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quote.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quote.destination.toLowerCase().includes(searchTerm.toLowerCase())
+  const { data: quotes, loading, error, refetch } = useApi<QuoteResponse[]>(
+    () => quoteService.getQuotes(page, pageSize),
+    [page]
   )
+
+  if (loading) return <Loading message="Cargando cotizaciones..." />
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={refetch} variant="outline" className="mt-2">
+          Reintentar
+        </Button>
+      </div>
+    )
+  }
+
+  const filteredQuotes = quotes?.filter(quote =>
+    quote.quoteNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quote.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || []
 
   return (
     <div className="space-y-6">
@@ -131,7 +99,7 @@ export function QuoteList({ tenant }: QuoteListProps) {
               <FileText className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-600">Total</p>
-                <p className="text-2xl font-bold">{quotes.length}</p>
+                <p className="text-2xl font-bold">{quotes?.length || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -143,7 +111,7 @@ export function QuoteList({ tenant }: QuoteListProps) {
               <div>
                 <p className="text-sm text-gray-600">Pendientes</p>
                 <p className="text-2xl font-bold">
-                  {quotes.filter(q => q.status === 'pending').length}
+                  {quotes?.filter(q => q.status.toLowerCase() === 'pending').length || 0}
                 </p>
               </div>
             </div>
@@ -156,7 +124,7 @@ export function QuoteList({ tenant }: QuoteListProps) {
               <div>
                 <p className="text-sm text-gray-600">Aprobadas</p>
                 <p className="text-2xl font-bold">
-                  {quotes.filter(q => q.status === 'approved').length}
+                  {quotes?.filter(q => q.status.toLowerCase() === 'approved').length || 0}
                 </p>
               </div>
             </div>
@@ -169,7 +137,7 @@ export function QuoteList({ tenant }: QuoteListProps) {
               <div>
                 <p className="text-sm text-gray-600">Valor Total</p>
                 <p className="text-lg font-bold">
-                  {formatCurrency(quotes.reduce((sum, q) => sum + q.totalAmount, 0))}
+                  {formatCurrency(quotes?.reduce((sum, q) => sum + q.totalAmount, 0) || 0)}
                 </p>
               </div>
             </div>
@@ -198,8 +166,8 @@ export function QuoteList({ tenant }: QuoteListProps) {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Destino</TableHead>
                 <TableHead>Fechas</TableHead>
+                <TableHead>Pasajeros</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Válida hasta</TableHead>
@@ -213,7 +181,6 @@ export function QuoteList({ tenant }: QuoteListProps) {
                     {quote.quoteNumber}
                   </TableCell>
                   <TableCell>{quote.customerName}</TableCell>
-                  <TableCell>{quote.destination}</TableCell>
                   <TableCell>
                     <div className="text-sm">
                       <div>{formatDate(quote.departureDate)}</div>
@@ -222,6 +189,7 @@ export function QuoteList({ tenant }: QuoteListProps) {
                       </div>
                     </div>
                   </TableCell>
+                  <TableCell>{quote.totalPassengers}</TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(quote.totalAmount)}
                   </TableCell>
@@ -251,6 +219,12 @@ export function QuoteList({ tenant }: QuoteListProps) {
               ))}
             </TableBody>
           </Table>
+
+          {filteredQuotes.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No se encontraron cotizaciones</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

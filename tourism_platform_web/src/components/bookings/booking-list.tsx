@@ -16,75 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatCurrency, formatDate } from "@/lib/utils"
-
-interface Booking {
-  id: string
-  bookingNumber: string
-  quoteNumber: string
-  customerName: string
-  destination: string
-  departureDate: string
-  returnDate: string
-  status: 'pending' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled'
-  totalAmount: number
-  totalPaid: number
-  pendingAmount: number
-  paymentStatus: 'pending' | 'partial' | 'paid' | 'refunded'
-  passengersCount: number
-  createdAt: string
-}
-
-// Datos de ejemplo
-const mockBookings: Booking[] = [
-  {
-    id: "1",
-    bookingNumber: "BK-202401-0001",
-    quoteNumber: "QT-202401-0001",
-    customerName: "María González",
-    destination: "Cartagena",
-    departureDate: "2024-03-15",
-    returnDate: "2024-03-19",
-    status: "confirmed",
-    totalAmount: 2500000,
-    totalPaid: 1500000,
-    pendingAmount: 1000000,
-    paymentStatus: "partial",
-    passengersCount: 2,
-    createdAt: "2024-01-15"
-  },
-  {
-    id: "2",
-    bookingNumber: "BK-202401-0002",
-    quoteNumber: "QT-202401-0002",
-    customerName: "Carlos Ruiz",
-    destination: "San Andrés",
-    departureDate: "2024-04-10",
-    returnDate: "2024-04-17",
-    status: "pending",
-    totalAmount: 3200000,
-    totalPaid: 0,
-    pendingAmount: 3200000,
-    paymentStatus: "pending",
-    passengersCount: 4,
-    createdAt: "2024-01-20"
-  },
-  {
-    id: "3",
-    bookingNumber: "BK-202401-0003",
-    quoteNumber: "QT-202401-0003",
-    customerName: "Ana Martínez",
-    destination: "Medellín",
-    departureDate: "2024-05-01",
-    returnDate: "2024-05-05",
-    status: "completed",
-    totalAmount: 1800000,
-    totalPaid: 1800000,
-    pendingAmount: 0,
-    paymentStatus: "paid",
-    passengersCount: 1,
-    createdAt: "2024-02-01"
-  }
-]
+import { Booking, BookingResponseDto } from "@/types/booking"
+import { useApi } from "@/hooks/use-api"
+import { bookingService } from "@/services/bookingService"
+import { Loading } from "../shared/loading"
 
 const getStatusColor = (status: Booking['status']) => {
   switch (status) {
@@ -134,16 +69,28 @@ interface BookingListProps {
 
 export function BookingList({ tenant }: BookingListProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [bookings] = useState<Booking[]>(mockBookings)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
 
-  const filteredBookings = bookings.filter(booking =>
+  const { data: bookings, loading, error, refetch } = useApi<Booking[]>(
+      () => bookingService.getBookings({
+        page,
+        pageSize 
+      }),
+      [searchTerm, page]
+  )
+
+  const safeBookings = bookings ?? [];
+  const filteredBookings = safeBookings.filter(booking =>
     booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     booking.destination.toLowerCase().includes(searchTerm.toLowerCase())
   )
+      
+  const totalRevenue = safeBookings.reduce((sum, b) => sum + b.totalPaid, 0)
+  const pendingRevenue = safeBookings.reduce((sum, b) => sum + b.pendingAmount, 0)
 
-  const totalRevenue = bookings.reduce((sum, b) => sum + b.totalPaid, 0)
-  const pendingRevenue = bookings.reduce((sum, b) => sum + b.pendingAmount, 0)
+  if (loading) return <Loading message="Cargando reservas..." />
 
   return (
     <div className="space-y-6">
@@ -168,7 +115,7 @@ export function BookingList({ tenant }: BookingListProps) {
               <Calendar className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-600">Total Reservas</p>
-                <p className="text-2xl font-bold">{bookings.length}</p>
+                <p className="text-2xl font-bold">{safeBookings.length}</p>
               </div>
             </div>
           </CardContent>
@@ -180,7 +127,7 @@ export function BookingList({ tenant }: BookingListProps) {
               <div>
                 <p className="text-sm text-gray-600">Confirmadas</p>
                 <p className="text-2xl font-bold">
-                  {bookings.filter(b => b.status === 'confirmed').length}
+                  {safeBookings.filter(b => b.status.toString().toLowerCase() === 'confirmed').length}
                 </p>
               </div>
             </div>

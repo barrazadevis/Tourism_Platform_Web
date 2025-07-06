@@ -1,36 +1,25 @@
 'use client'
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ApiError } from "@/lib/api"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  
-  const { login } = useAuth()
-  const router = useRouter()
+  const { login, isLoading, error } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
+    
     try {
       await login(email, password)
-      // Redirect to tenant dashboard
-      const urlPath = window.location.pathname
-      const tenant = urlPath.split('/')[1] || 'demo'
-      router.push(`/${tenant}/dashboard`)
-    } catch (err) {
-      setError("Credenciales inválidas")
-    } finally {
-      setIsLoading(false)
+    } catch (error) {
+      // Error is handled by the auth context
+      console.error('Login failed:', error)
     }
   }
 
@@ -51,6 +40,7 @@ export function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
               required
+              disabled={isLoading}
             />
           </div>
           
@@ -62,6 +52,7 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              disabled={isLoading}
             />
           </div>
 

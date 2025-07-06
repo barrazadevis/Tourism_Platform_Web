@@ -1,114 +1,24 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Search, Plus, Eye, Edit, MapPin, Clock, DollarSign, Users, Star, Filter } from "lucide-react"
+import { Search, Plus, Eye, Edit, MapPin, Clock, DollarSign, Users, Star, Filter, ToggleLeft, ToggleRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Loading } from "@/components/shared/loading"
 import { formatCurrency } from "@/lib/utils"
-
-interface TravelPlan {
-  id: string
-  name: string
-  description: string
-  destination: string
-  durationDays: number
-  basePrice: number
-  planType: string
-  inclusions: string[]
-  exclusions: string[]
-  isActive: boolean
-  totalQuotes: number
-  rating: number
-  imageUrl: string
-  createdAt: string
-}
-
-// Datos de ejemplo
-const mockTravelPlans: TravelPlan[] = [
-  {
-    id: "1",
-    name: "Cartagena Mágica",
-    description: "Descubre la ciudad amurallada más hermosa de Colombia con este plan completo de 4 días y 3 noches.",
-    destination: "Cartagena, Colombia",
-    durationDays: 4,
-    basePrice: 850000,
-    planType: "Ciudad Colonial",
-    inclusions: [
-      "3 noches de alojamiento",
-      "Desayunos incluidos",
-      "City tour centro histórico",
-      "Visita a las murallas",
-      "Traslados aeropuerto"
-    ],
-    exclusions: [
-      "Tiquetes aéreos",
-      "Almuerzos y cenas",
-      "Actividades opcionales",
-      "Gastos personales"
-    ],
-    isActive: true,
-    totalQuotes: 25,
-    rating: 4.8,
-    imageUrl: "/cartagena.jpg",
-    createdAt: "2024-01-15"
-  },
-  {
-    id: "2",
-    name: "San Andrés Paraíso",
-    description: "Relájate en las playas más cristalinas del Caribe colombiano con este paquete todo incluido.",
-    destination: "San Andrés, Colombia",
-    durationDays: 5,
-    basePrice: 1200000,
-    planType: "Playa y Descanso",
-    inclusions: [
-      "4 noches todo incluido",
-      "Vuelos nacionales",
-      "Traslados en la isla",
-      "Tour acuático",
-      "Seguro de viaje"
-    ],
-    exclusions: [
-      "Actividades acuáticas extremas",
-      "Excursiones a islotes",
-      "Gastos personales"
-    ],
-    isActive: true,
-    totalQuotes: 18,
-    rating: 4.9,
-    imageUrl: "/sanandres.jpg",
-    createdAt: "2024-01-10"
-  },
-  {
-    id: "3",
-    name: "Medellín Ciudad Innovadora",
-    description: "Conoce la transformación de Medellín con tours por comunas, museos y vida nocturna.",
-    destination: "Medellín, Colombia",
-    durationDays: 3,
-    basePrice: 650000,
-    planType: "Cultura y Modernidad",
-    inclusions: [
-      "2 noches de hotel",
-      "Tour por comunas",
-      "Visita Museo de Antioquia",
-      "Metrocable incluido",
-      "Guía especializado"
-    ],
-    exclusions: [
-      "Tiquetes aéreos",
-      "Comidas",
-      "Tour Pablo Escobar",
-      "Actividades nocturnas"
-    ],
-    isActive: false,
-    totalQuotes: 8,
-    rating: 4.5,
-    imageUrl: "/medellin.jpg",
-    createdAt: "2024-02-01"
-  }
-]
+import { useApi } from "@/hooks/use-api"
+import { travelPlanService } from "@/services/travelPlanService"
+import { TravelPlanResponseDto, TravelPlanSearchParams } from "@/types/travel-plan"
 
 interface TravelPlanListProps {
   tenant: string
@@ -118,22 +28,102 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterDestination, setFilterDestination] = useState("")
   const [filterType, setFilterType] = useState("")
+  const [filterMinPrice, setFilterMinPrice] = useState("")
+  const [filterMaxPrice, setFilterMaxPrice] = useState("")
+  const [filterMinDuration, setFilterMinDuration] = useState("")
+  const [filterMaxDuration, setFilterMaxDuration] = useState("")
+  const [filterIsActive, setFilterIsActive] = useState<string>("")
   const [showFilters, setShowFilters] = useState(false)
-  const [travelPlans] = useState<TravelPlan[]>(mockTravelPlans)
+  const [page, setPage] = useState(1)
+  const [destinations, setDestinations] = useState<string[]>([])
+  const [planTypes, setPlanTypes] = useState<string[]>([])
+  const [loadingFilters, setLoadingFilters] = useState(false)
+  const pageSize = 12
 
-  const filteredPlans = travelPlans.filter(plan => {
-    const matchesSearch = plan.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         plan.destination.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         plan.description.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesDestination = !filterDestination || plan.destination.includes(filterDestination)
-    const matchesType = !filterType || plan.planType === filterType
-    
-    return matchesSearch && matchesDestination && matchesType
-  })
+  // Build search parameters
+  const searchParams: TravelPlanSearchParams = {
+    searchTerm: searchTerm,
+    destination: filterDestination,
+    planType: filterType,
+    minPrice: filterMinPrice ? parseFloat(filterMinPrice) : 0,
+    maxPrice: filterMaxPrice ? parseFloat(filterMaxPrice) : 0,
+    minDuration: filterMinDuration ? parseInt(filterMinDuration) : 0,
+    maxDuration: filterMaxDuration ? parseInt(filterMaxDuration) : 0,
+    isActive: filterIsActive ? filterIsActive === 'true' : false,
+    page,
+    pageSize
+  }
 
-  const destinations = [...new Set(travelPlans.map(plan => plan.destination))]
-  const planTypes = [...new Set(travelPlans.map(plan => plan.planType))]
+  const { data: travelPlans, loading, error, refetch } = useApi<TravelPlanResponseDto[]>(
+    () => travelPlanService.getTravelPlans(searchParams),
+    [searchTerm, filterDestination, filterType, filterMinPrice, filterMaxPrice, 
+     filterMinDuration, filterMaxDuration, filterIsActive, page]
+  )
+
+  // Load destinations and plan types for filters
+  useEffect(() => {
+    loadFilterOptions()
+  }, [])
+
+  const loadFilterOptions = async () => {
+    setLoadingFilters(true)
+    try {
+      const [destinationsData, planTypesData] = await Promise.all([
+        travelPlanService.getDestinations(),
+        travelPlanService.getPlanTypes()
+      ])
+      setDestinations(destinationsData)
+      setPlanTypes(planTypesData)
+    } catch (error) {
+      console.error('Error loading filter options:', error)
+    } finally {
+      setLoadingFilters(false)
+    }
+  }
+
+  const handleToggleStatus = async (planId: string) => {
+    try {
+      await travelPlanService.toggleTravelPlanStatus(planId)
+      refetch() // Refresh the list
+    } catch (error) {
+      console.error('Error toggling plan status:', error)
+      alert('Error al cambiar el estado del plan')
+    }
+  }
+
+  const clearFilters = () => {
+    setFilterDestination("")
+    setFilterType("")
+    setFilterMinPrice("")
+    setFilterMaxPrice("")
+    setFilterMinDuration("")
+    setFilterMaxDuration("")
+    setFilterIsActive("")
+    setPage(1)
+  }
+
+  if (loading) return <Loading message="Cargando planes de viaje..." />
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={refetch} variant="outline" className="mt-2">
+          Reintentar
+        </Button>
+      </div>
+    )
+  }
+
+  // Calculate stats from actual data
+  const totalPlans = travelPlans?.length || 0
+  const activePlans = travelPlans?.filter(p => p.isActive).length || 0
+  const averagePrice = totalPlans > 0 
+    ? travelPlans!.reduce((sum, p) => sum + p.price, 0) / totalPlans 
+    : 0
+  const averageRating = totalPlans > 0 
+    ? travelPlans!.reduce((sum, p) => sum + (p.averageRating || 0), 0) / totalPlans 
+    : 0
 
   return (
     <div className="space-y-6">
@@ -158,7 +148,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
               <MapPin className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-600">Total Planes</p>
-                <p className="text-2xl font-bold">{travelPlans.length}</p>
+                <p className="text-2xl font-bold">{totalPlans}</p>
               </div>
             </div>
           </CardContent>
@@ -169,9 +159,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
               <Users className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm text-gray-600">Planes Activos</p>
-                <p className="text-2xl font-bold">
-                  {travelPlans.filter(p => p.isActive).length}
-                </p>
+                <p className="text-2xl font-bold">{activePlans}</p>
               </div>
             </div>
           </CardContent>
@@ -183,9 +171,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
               <div>
                 <p className="text-sm text-gray-600">Precio Promedio</p>
                 <p className="text-lg font-bold">
-                  {formatCurrency(
-                    travelPlans.reduce((sum, p) => sum + p.basePrice, 0) / travelPlans.length
-                  )}
+                  {formatCurrency(averagePrice)}
                 </p>
               </div>
             </div>
@@ -198,7 +184,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
               <div>
                 <p className="text-sm text-gray-600">Rating Promedio</p>
                 <p className="text-2xl font-bold">
-                  {(travelPlans.reduce((sum, p) => sum + p.rating, 0) / travelPlans.length).toFixed(1)}
+                  {averageRating.toFixed(1)}
                 </p>
               </div>
             </div>
@@ -232,42 +218,94 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
             </div>
             
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <label className="text-sm font-medium">Destino</label>
-                  <select
-                    value={filterDestination}
-                    onChange={(e) => setFilterDestination(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Todos los destinos</option>
-                    {destinations.map(dest => (
-                      <option key={dest} value={dest}>{dest}</option>
-                    ))}
-                  </select>
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Destino</label>
+                    <Select value={filterDestination} onValueChange={setFilterDestination}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos los destinos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Todos los destinos</SelectItem>
+                        {destinations.map(dest => (
+                          <SelectItem key={dest} value={dest}>{dest}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Tipo de Plan</label>
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos los tipos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Todos los tipos</SelectItem>
+                        {planTypes.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Estado</label>
+                    <Select value={filterIsActive} onValueChange={setFilterIsActive}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos los estados" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Todos</SelectItem>
+                        <SelectItem value="true">Activos</SelectItem>
+                        <SelectItem value="false">Inactivos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Tipo de Plan</label>
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Todos los tipos</option>
-                    {planTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Precio Mínimo</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={filterMinPrice}
+                      onChange={(e) => setFilterMinPrice(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Precio Máximo</label>
+                    <Input
+                      type="number"
+                      placeholder="Sin límite"
+                      value={filterMaxPrice}
+                      onChange={(e) => setFilterMaxPrice(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Duración Mín (días)</label>
+                    <Input
+                      type="number"
+                      placeholder="1"
+                      value={filterMinDuration}
+                      onChange={(e) => setFilterMinDuration(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Duración Máx (días)</label>
+                    <Input
+                      type="number"
+                      placeholder="Sin límite"
+                      value={filterMaxDuration}
+                      onChange={(e) => setFilterMaxDuration(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFilterDestination("")
-                      setFilterType("")
-                    }}
-                    className="w-full"
-                  >
+
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={clearFilters}>
                     Limpiar Filtros
                   </Button>
                 </div>
@@ -277,7 +315,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPlans.map((plan) => (
+            {travelPlans?.map((plan) => (
               <Card key={plan.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="h-48 bg-gradient-to-br from-blue-500 to-cyan-500 relative">
                   <div className="absolute top-4 left-4">
@@ -285,12 +323,14 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
                       {plan.isActive ? "Activo" : "Inactivo"}
                     </Badge>
                   </div>
-                  <div className="absolute top-4 right-4">
-                    <div className="flex items-center bg-white/90 rounded px-2 py-1">
-                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      <span className="text-sm font-medium">{plan.rating}</span>
+                  {plan.averageRating && (
+                    <div className="absolute top-4 right-4">
+                      <div className="flex items-center bg-white/90 rounded px-2 py-1">
+                        <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                        <span className="text-sm font-medium">{plan.averageRating.toFixed(1)}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="absolute bottom-4 left-4 text-white">
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-1" />
@@ -303,17 +343,17 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{plan.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{plan.description}</p>
                     </div>
 
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
-                        {plan.durationDays} días
+                        {plan.duration} días
                       </div>
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-1" />
-                        {plan.totalQuotes} cotizaciones
+                        {plan.totalQuotes || 0} cotizaciones
                       </div>
                     </div>
 
@@ -328,10 +368,22 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
                         <div>
                           <p className="text-sm text-gray-600">Desde</p>
                           <p className="text-2xl font-bold text-primary">
-                            {formatCurrency(plan.basePrice)}
+                            {formatCurrency(plan.price)}
                           </p>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleStatus(plan.id)}
+                            title={plan.isActive ? "Desactivar plan" : "Activar plan"}
+                          >
+                            {plan.isActive ? (
+                              <ToggleRight className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <ToggleLeft className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
                           <Link href={`/${tenant}/travel-plans/${plan.id}`}>
                             <Button variant="outline" size="sm">
                               <Eye className="h-4 w-4" />
@@ -351,7 +403,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
             ))}
           </div>
 
-          {filteredPlans.length === 0 && (
+          {travelPlans?.length === 0 && (
             <div className="text-center py-12">
               <MapPin className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No hay planes</h3>

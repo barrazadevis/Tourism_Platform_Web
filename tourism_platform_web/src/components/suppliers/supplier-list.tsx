@@ -1,12 +1,34 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Search, Plus, Eye, Edit, Truck, Phone, Mail, MapPin, Star, Building, ToggleLeft, ToggleRight } from "lucide-react"
+import { 
+  Search, 
+  Plus, 
+  Eye, 
+  Edit, 
+  Truck, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Star, 
+  Building, 
+  ToggleLeft, 
+  ToggleRight, 
+  Filter,
+  Loader2
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -15,122 +37,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-interface Supplier {
-  id: string
-  name: string
-  contactEmail: string
-  contactPhone: string
-  address: string
-  city: string
-  country: string
-  supplierType: string
-  isActive: boolean
-  rating: number
-  totalServices: number
-  createdAt: string
-  services: Array<{
-    id: string
-    serviceName: string
-    serviceType: string
-    cost: number
-    currency: string
-  }>
-}
-
-// Datos de ejemplo
-const mockSuppliers: Supplier[] = [
-  {
-    id: "1",
-    name: "Hotels Caribe Premium",
-    contactEmail: "reservas@hotelcaribe.com",
-    contactPhone: "+57 5 665 0000",
-    address: "Av. San Martín #4-60",
-    city: "Cartagena",
-    country: "Colombia",
-    supplierType: "Alojamiento",
-    isActive: true,
-    rating: 4.8,
-    totalServices: 5,
-    createdAt: "2024-01-15",
-    services: [
-      {
-        id: "1",
-        serviceName: "Habitación Doble Standard",
-        serviceType: "Alojamiento",
-        cost: 280000,
-        currency: "COP"
-      },
-      {
-        id: "2", 
-        serviceName: "Suite Junior",
-        serviceType: "Alojamiento",
-        cost: 450000,
-        currency: "COP"
-      }
-    ]
-  },
-  {
-    id: "2",
-    name: "Transportes Turísticos del Caribe",
-    contactEmail: "info@transportescaribe.com",
-    contactPhone: "+57 5 664 2222",
-    address: "Calle 30 #20-45",
-    city: "Cartagena",
-    country: "Colombia",
-    supplierType: "Transporte",
-    isActive: true,
-    rating: 4.5,
-    totalServices: 3,
-    createdAt: "2024-01-10",
-    services: [
-      {
-        id: "3",
-        serviceName: "Traslado Aeropuerto",
-        serviceType: "Transporte",
-        cost: 45000,
-        currency: "COP"
-      },
-      {
-        id: "4",
-        serviceName: "City Tour",
-        serviceType: "Transporte",
-        cost: 85000,
-        currency: "COP"
-      }
-    ]
-  },
-  {
-    id: "3",
-    name: "Aventuras San Andrés",
-    contactEmail: "ventas@aventurassanandres.com",
-    contactPhone: "+57 8 512 3333",
-    address: "Av. Circunvalar #12-34",
-    city: "San Andrés",
-    country: "Colombia",
-    supplierType: "Actividades",
-    isActive: false,
-    rating: 4.2,
-    totalServices: 8,
-    createdAt: "2024-02-01",
-    services: [
-      {
-        id: "5",
-        serviceName: "Tour Acuático",
-        serviceType: "Actividades",
-        cost: 120000,
-        currency: "COP"
-      },
-      {
-        id: "6",
-        serviceName: "Snorkeling",
-        serviceType: "Actividades", 
-        cost: 75000,
-        currency: "COP"
-      }
-    ]
-  }
-]
+import { Loading } from "@/components/shared/loading"
+import { formatCurrency } from "@/lib/utils"
+import { useApi } from "@/hooks/use-api"
+import { supplierService } from "@/services/supplierService"
+import { 
+  SupplierResponseDto, 
+  SupplierSearchParams,
+  getSupplierTypeText,
+  getSupplierStatusColor,
+  getSupplierStatusText,
+  getSupplierIcon
+} from "@/types/supplier"
 
 interface SupplierListProps {
   tenant: string
@@ -138,29 +56,107 @@ interface SupplierListProps {
 
 export function SupplierList({ tenant }: SupplierListProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState("")
-  const [filterCity, setFilterCity] = useState("")
-  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers)
+  const [filterType, setFilterType] = useState("all")
+  const [filterCity, setFilterCity] = useState("all")
+  const [filterIsActive, setFilterIsActive] = useState("all")
+  const [showFilters, setShowFilters] = useState(false)
+  const [page, setPage] = useState(1)
+  const [supplierTypes, setSupplierTypes] = useState<string[]>([])
+  const [cities, setCities] = useState<string[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(false)
+  const [toggleStates, setToggleStates] = useState<Record<string, boolean>>({})
+  const pageSize = 10
 
-  const filteredSuppliers = suppliers.filter(supplier => {
-    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.contactEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.city.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesType = !filterType || supplier.supplierType === filterType
-    const matchesCity = !filterCity || supplier.city === filterCity
-    
-    return matchesSearch && matchesType && matchesCity
-  })
-
-  const supplierTypes = [...new Set(suppliers.map(s => s.supplierType))]
-  const cities = [...new Set(suppliers.map(s => s.city))]
-
-  const toggleSupplierStatus = (id: string) => {
-    setSuppliers(prev => prev.map(supplier =>
-      supplier.id === id ? { ...supplier, isActive: !supplier.isActive } : supplier
-    ))
+  // Build search parameters
+  const searchParams: SupplierSearchParams = {
+    searchTerm: searchTerm,
+    supplierType: filterType && filterType !== "all" ? filterType : '',
+    city: filterCity && filterCity !== "all" ? filterCity : '',
+    isActive: filterIsActive && filterIsActive !== "all" ? filterIsActive === "true" : true,
+    page,
+    pageSize
   }
+
+  const { data: suppliers, loading, error, refetch } = useApi<SupplierResponseDto[]>(
+    () => supplierService.getSuppliers(searchParams),
+    [searchTerm, filterType, filterCity, filterIsActive, page]
+  )
+
+  // Load filter options on component mount
+  useEffect(() => {
+    loadFilterOptions()
+  }, [])
+
+  const loadFilterOptions = async () => {
+    setLoadingOptions(true)
+    try {
+      const supplierTypesData = await supplierService.getSupplierTypes()
+      setSupplierTypes(supplierTypesData.filter(type => type && type.trim() !== ''))
+      
+      // Extract unique cities from current suppliers data
+      if (suppliers) {
+        const uniqueCities = [...new Set(suppliers.map(s => s.city).filter(city => city && city.trim() !== ''))]
+        setCities(uniqueCities)
+      }
+    } catch (error) {
+      console.error('Error loading filter options:', error)
+      setSupplierTypes([])
+      setCities([])
+    } finally {
+      setLoadingOptions(false)
+    }
+  }
+
+  // Update cities when suppliers data changes
+  useEffect(() => {
+    if (suppliers) {
+      const uniqueCities = [...new Set(suppliers.map(s => s.city).filter(city => city && city.trim() !== ''))]
+      setCities(uniqueCities)
+    }
+  }, [suppliers])
+
+  const handleToggleSupplierStatus = async (supplierId: string) => {
+    setToggleStates(prev => ({ ...prev, [supplierId]: true }))
+    
+    try {
+      await supplierService.toggleSupplierStatus(supplierId)
+      refetch() // Refresh the suppliers list
+    } catch (error) {
+      console.error('Error toggling supplier status:', error)
+      alert('Error al cambiar el estado del proveedor')
+    } finally {
+      setToggleStates(prev => ({ ...prev, [supplierId]: false }))
+    }
+  }
+
+  const clearFilters = () => {
+    setFilterType("all")
+    setFilterCity("all")
+    setFilterIsActive("all")
+    setSearchTerm("")
+    setPage(1)
+  }
+
+  if (loading) return <Loading message="Cargando proveedores..." />
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={refetch} variant="outline" className="mt-2">
+          Reintentar
+        </Button>
+      </div>
+    )
+  }
+
+  // Calculate stats from actual data
+  const totalSuppliers = suppliers?.length || 0
+  const activeSuppliers = suppliers?.filter(s => s.isActive).length || 0
+  const totalContracts = suppliers?.reduce((sum, s) => sum + (s.totalContracts || 0), 0) || 0
+  const averageRating = totalSuppliers > 0 
+    ? suppliers!.reduce((sum, s) => sum + (s.averageRating || 0), 0) / totalSuppliers 
+    : 0
 
   return (
     <div className="space-y-6">
@@ -185,7 +181,7 @@ export function SupplierList({ tenant }: SupplierListProps) {
               <Building className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-600">Total Proveedores</p>
-                <p className="text-2xl font-bold">{suppliers.length}</p>
+                <p className="text-2xl font-bold">{totalSuppliers}</p>
               </div>
             </div>
           </CardContent>
@@ -195,10 +191,8 @@ export function SupplierList({ tenant }: SupplierListProps) {
             <div className="flex items-center space-x-2">
               <ToggleRight className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-gray-600">Activos</p>
-                <p className="text-2xl font-bold">
-                  {suppliers.filter(s => s.isActive).length}
-                </p>
+                <p className="text-sm text-gray-600">Proveedores Activos</p>
+                <p className="text-2xl font-bold">{activeSuppliers}</p>
               </div>
             </div>
           </CardContent>
@@ -208,10 +202,8 @@ export function SupplierList({ tenant }: SupplierListProps) {
             <div className="flex items-center space-x-2">
               <Truck className="h-5 w-5 text-purple-600" />
               <div>
-                <p className="text-sm text-gray-600">Total Servicios</p>
-                <p className="text-2xl font-bold">
-                  {suppliers.reduce((sum, s) => sum + s.totalServices, 0)}
-                </p>
+                <p className="text-sm text-gray-600">Total Contratos</p>
+                <p className="text-2xl font-bold">{totalContracts}</p>
               </div>
             </div>
           </CardContent>
@@ -222,9 +214,7 @@ export function SupplierList({ tenant }: SupplierListProps) {
               <Star className="h-5 w-5 text-yellow-600" />
               <div>
                 <p className="text-sm text-gray-600">Rating Promedio</p>
-                <p className="text-2xl font-bold">
-                  {(suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length).toFixed(1)}
-                </p>
+                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
               </div>
             </div>
           </CardContent>
@@ -234,8 +224,8 @@ export function SupplierList({ tenant }: SupplierListProps) {
       <Card>
         <CardHeader>
           <CardTitle>Lista de Proveedores</CardTitle>
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex items-center space-x-4 flex-wrap gap-2">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar proveedores..."
@@ -244,27 +234,74 @@ export function SupplierList({ tenant }: SupplierListProps) {
                 className="pl-8"
               />
             </div>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
             >
-              <option value="">Todos los tipos</option>
-              {supplierTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            <select
-              value={filterCity}
-              onChange={(e) => setFilterCity(e.target.value)}
-              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="">Todas las ciudades</option>
-              {cities.map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
-            </select>
+              <Filter className="mr-2 h-4 w-4" />
+              Filtros
+            </Button>
           </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Tipo de Proveedor</label>
+                {loadingOptions ? (
+                  <Input placeholder="Cargando tipos..." disabled />
+                ) : (
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos los tipos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      {supplierTypes.map(type => (
+                        <SelectItem key={type} value={type}>{getSupplierTypeText(type)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Ciudad</label>
+                <Select value={filterCity} onValueChange={setFilterCity}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas las ciudades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las ciudades</SelectItem>
+                    {cities.map(city => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Estado</label>
+                <Select value={filterIsActive} onValueChange={setFilterIsActive}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="true">Activos</SelectItem>
+                    <SelectItem value="false">Inactivos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <Button variant="outline" onClick={clearFilters} className="w-full">
+                  Limpiar Filtros
+                </Button>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -274,35 +311,47 @@ export function SupplierList({ tenant }: SupplierListProps) {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Ubicación</TableHead>
-                <TableHead>Servicios</TableHead>
+                <TableHead>Contratos</TableHead>
                 <TableHead>Rating</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSuppliers.map((supplier) => (
+              {suppliers?.map((supplier) => (
                 <TableRow key={supplier.id}>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{supplier.name}</div>
-                      <div className="text-sm text-gray-500">
-                        Desde {new Date(supplier.createdAt).toLocaleDateString()}
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">{getSupplierIcon(supplier.supplierType)}</span>
+                      <div>
+                        <div className="font-medium">{supplier.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {supplier.contactPerson}
+                        </div>
+                        {supplier.isPreferred && (
+                          <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700">
+                            Preferido
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{supplier.supplierType}</Badge>
+                    <Badge variant="outline">{getSupplierTypeText(supplier.supplierType)}</Badge>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center text-sm">
                         <Mail className="h-3 w-3 mr-1 text-gray-400" />
-                        {supplier.contactEmail}
+                        <a href={`mailto:${supplier.email}`} className="hover:text-blue-600">
+                          {supplier.email}
+                        </a>
                       </div>
                       <div className="flex items-center text-sm">
                         <Phone className="h-3 w-3 mr-1 text-gray-400" />
-                        {supplier.contactPhone}
+                        <a href={`tel:${supplier.phone}`} className="hover:text-blue-600">
+                          {supplier.phone}
+                        </a>
                       </div>
                     </div>
                   </TableCell>
@@ -316,20 +365,37 @@ export function SupplierList({ tenant }: SupplierListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="font-medium">{supplier.totalServices}</span>
+                    <div>
+                      <span className="font-medium">{supplier.totalContracts || 0}</span>
+                      {supplier.totalBookings && (
+                        <div className="text-xs text-gray-500">
+                          {supplier.totalBookings} reservas
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      <span className="font-medium">{supplier.rating}</span>
+                      <span className="font-medium">
+                        {supplier.averageRating?.toFixed(1) || "N/A"}
+                      </span>
+                      {supplier.reviewCount && (
+                        <span className="text-xs text-gray-500 ml-1">
+                          ({supplier.reviewCount})
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <button
-                      onClick={() => toggleSupplierStatus(supplier.id)}
+                      onClick={() => handleToggleSupplierStatus(supplier.id)}
+                      disabled={toggleStates[supplier.id]}
                       className="flex items-center"
                     >
-                      {supplier.isActive ? (
+                      {toggleStates[supplier.id] ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : supplier.isActive ? (
                         <>
                           <ToggleRight className="h-5 w-5 text-green-600 mr-1" />
                           <span className="text-green-600 text-sm">Activo</span>
@@ -360,6 +426,16 @@ export function SupplierList({ tenant }: SupplierListProps) {
               ))}
             </TableBody>
           </Table>
+
+          {suppliers?.length === 0 && (
+            <div className="text-center py-12">
+              <Building className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay proveedores</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                No se encontraron proveedores que coincidan con los filtros aplicados.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,59 +1,147 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, Save, ArrowLeft } from "lucide-react"
+import { Plus, Trash2, Save, ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-
-interface PlanService {
-  id: string
-  serviceType: string
-  name: string
-  description: string
-  price: number
-  isIncluded: boolean
-  isOptional: boolean
-}
-
-interface TravelPlanFormData {
-  name: string
-  description: string
-  destination: string
-  durationDays: number
-  basePrice: number
-  planType: string
-  inclusions: string[]
-  exclusions: string[]
-  services: PlanService[]
-}
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Loading } from "@/components/shared/loading"
+import { formatCurrency } from "@/lib/utils"
+import { useApi } from "@/hooks/use-api"
+import { travelPlanService } from "@/services/travelPlanService"
+import { 
+  TravelPlanResponseDto, 
+  CreateTravelPlanDto, 
+  UpdateTravelPlanDto,
+  DifficultyLevel 
+} from "@/types/travel-plan"
 
 interface TravelPlanFormProps {
   tenant: string
+  planId?: string // For editing
   isEditing?: boolean
-  initialData?: Partial<TravelPlanFormData>
 }
 
-export function TravelPlanForm({ tenant, isEditing = false, initialData }: TravelPlanFormProps) {
+export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlanFormProps) {
   const router = useRouter()
-  const [formData, setFormData] = useState<TravelPlanFormData>({
-    name: initialData?.name || "",
-    description: initialData?.description || "",
-    destination: initialData?.destination || "",
-    durationDays: initialData?.durationDays || 1,
-    basePrice: initialData?.basePrice || 0,
-    planType: initialData?.planType || "",
-    inclusions: initialData?.inclusions || [],
-    exclusions: initialData?.exclusions || [],
-    services: initialData?.services || []
+  const [formData, setFormData] = useState<CreateTravelPlanDto>({
+    name: "",
+    description: "",
+    destination: "",
+    planType: "",
+    duration: 1,
+    price: 0,
+    currency: "COP",
+    maxGroupSize: 1,
+    minAge: 0,
+    maxAge: undefined,
+    difficultyLevel: DifficultyLevel.Easy,
+    includesAccommodation: false,
+    includesTransportation: false,
+    includesMeals: false,
+    includesGuide: false,
+    imageUrl: "",
+    highlights: [],
+    inclusions: [],
+    exclusions: [],
+    itinerary: []
   })
 
+  const [newHighlight, setNewHighlight] = useState("")
   const [newInclusion, setNewInclusion] = useState("")
   const [newExclusion, setNewExclusion] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [destinations, setDestinations] = useState<string[]>([])
+  const [planTypes, setPlanTypes] = useState<string[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(false)
 
+  // Load existing plan data if editing
+  const { data: existingPlan, loading: loadingPlan, error } = useApi<TravelPlanResponseDto>(
+    () => planId ? travelPlanService.getTravelPlanById(planId) : Promise.resolve(null as any),
+    [planId]
+  )
+
+  // Load form options
+  useEffect(() => {
+    loadFormOptions()
+  }, [])
+
+  // Set form data when editing
+  useEffect(() => {
+    if (isEditing && existingPlan) {
+      setFormData({
+        name: existingPlan.name,
+        description: existingPlan.description,
+        destination: existingPlan.destination,
+        planType: existingPlan.planType,
+        duration: existingPlan.duration,
+        price: existingPlan.price,
+        currency: existingPlan.currency,
+        maxGroupSize: existingPlan.maxGroupSize,
+        minAge: existingPlan.minAge,
+        maxAge: existingPlan.maxAge,
+        difficultyLevel: existingPlan.difficultyLevel as DifficultyLevel,
+        includesAccommodation: existingPlan.includesAccommodation,
+        includesTransportation: existingPlan.includesTransportation,
+        includesMeals: existingPlan.includesMeals,
+        includesGuide: existingPlan.includesGuide,
+        imageUrl: existingPlan.imageUrl || "",
+        highlights: existingPlan.highlights || [],
+        inclusions: existingPlan.inclusions || [],
+        exclusions: existingPlan.exclusions || [],
+        itinerary: existingPlan.itinerary || []
+      })
+    }
+  }, [isEditing, existingPlan])
+
+  const loadFormOptions = async () => {
+    setLoadingOptions(true)
+    try {
+      const [destinationsData, planTypesData] = await Promise.all([
+        travelPlanService.getDestinations(),
+        travelPlanService.getPlanTypes()
+      ])
+      
+      // Filtrar datos vacíos antes de establecer en el estado
+      setDestinations(destinationsData.filter(dest => dest && dest.trim() !== ''))
+      setPlanTypes(planTypesData.filter(type => type && type.trim() !== ''))
+    } catch (error) {
+      console.error('Error loading form options:', error)
+      setDestinations([])
+      setPlanTypes([])
+    } finally {
+      setLoadingOptions(false)
+    }
+  }
+
+  // Highlight management
+  const addHighlight = () => {
+    if (newHighlight.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        highlights: [...prev.highlights, newHighlight.trim()]
+      }))
+      setNewHighlight("")
+    }
+  }
+
+  const removeHighlight = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      highlights: prev.highlights.filter((_, i) => i !== index)
+    }))
+  }
+
+  // Inclusion management
   const addInclusion = () => {
     if (newInclusion.trim()) {
       setFormData(prev => ({
@@ -71,6 +159,7 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
     }))
   }
 
+  // Exclusion management
   const addExclusion = () => {
     if (newExclusion.trim()) {
       setFormData(prev => ({
@@ -88,58 +177,37 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
     }))
   }
 
-  const addService = () => {
-    const newService: PlanService = {
-      id: Date.now().toString(),
-      serviceType: "Alojamiento",
-      name: "",
-      description: "",
-      price: 0,
-      isIncluded: true,
-      isOptional: false
-    }
-    setFormData(prev => ({
-      ...prev,
-      services: [...prev.services, newService]
-    }))
-  }
-
-  const updateService = (id: string, field: keyof PlanService, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      services: prev.services.map(service =>
-        service.id === id ? { ...service, [field]: value } : service
-      )
-    }))
-  }
-
-  const removeService = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      services: prev.services.filter(service => service.id !== id)
-    }))
-  }
-
-  const calculateTotalPrice = () => {
-    const includedServicesPrice = formData.services
-      .filter(s => s.isIncluded)
-      .reduce((sum, s) => sum + s.price, 0)
-    return formData.basePrice + includedServicesPrice
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      console.log('Saving travel plan:', formData)
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (isEditing && planId) {
+        const updateData: UpdateTravelPlanDto = formData
+        await travelPlanService.updateTravelPlan(planId, updateData)
+      } else {
+        await travelPlanService.createTravelPlan(formData)
+      }
       router.push(`/${tenant}/travel-plans`)
     } catch (error) {
       console.error('Error saving travel plan:', error)
+      alert('Error al guardar el plan de viaje. Por favor intenta de nuevo.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (loadingPlan) return <Loading message="Cargando plan de viaje..." />
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={() => router.push(`/${tenant}/travel-plans`)} variant="outline" className="mt-2">
+          Volver a Planes
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -163,9 +231,9 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
           </div>
         </div>
         <div className="text-right">
-          <p className="text-sm text-gray-600">Precio Total Estimado</p>
+          <p className="text-sm text-gray-600">Precio del Plan</p>
           <p className="text-2xl font-bold text-primary">
-            ${calculateTotalPrice().toLocaleString()}
+            {formatCurrency(formData.price)}
           </p>
         </div>
       </div>
@@ -179,7 +247,7 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Nombre del Plan *</label>
+                <label className="text-sm font-medium mb-2 block">Nombre del Plan *</label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -188,18 +256,31 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Destino *</label>
-                <Input
-                  value={formData.destination}
-                  onChange={(e) => setFormData(prev => ({ ...prev, destination: e.target.value }))}
-                  placeholder="Ej: Cartagena, Colombia"
-                  required
-                />
+                <label className="text-sm font-medium mb-2 block">Destino *</label>
+                {loadingOptions ? (
+                  <Input placeholder="Cargando destinos..." disabled />
+                ) : (
+                  <Select
+                    value={formData.destination}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, destination: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {destinations
+                        .filter(dest => dest && dest.trim() !== '') // Filtrar valores vacíos
+                        .map(dest => (
+                          <SelectItem key={dest} value={dest}>{dest}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium">Descripción</label>
+              <label className="text-sm font-medium mb-2 block">Descripción</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -208,152 +289,209 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium">Duración (días) *</label>
+                <label className="text-sm font-medium mb-2 block">Duración (días) *</label>
                 <Input
                   type="number"
                   min="1"
-                  value={formData.durationDays}
+                  value={formData.duration}
                   onChange={(e) => setFormData(prev => ({ 
-                    ...prev, durationDays: parseInt(e.target.value) || 1 
+                    ...prev, duration: parseInt(e.target.value) || 1 
                   }))}
                   required
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Precio Base *</label>
+                <label className="text-sm font-medium mb-2 block">Precio *</label>
                 <Input
                   type="number"
                   min="0"
-                  value={formData.basePrice}
+                  step="0.01"
+                  value={formData.price}
                   onChange={(e) => setFormData(prev => ({ 
-                    ...prev, basePrice: parseFloat(e.target.value) || 0 
+                    ...prev, price: parseFloat(e.target.value) || 0 
                   }))}
                   placeholder="0"
                   required
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Tipo de Plan *</label>
-                <select
-                  value={formData.planType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, planType: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  required
+                <label className="text-sm font-medium mb-2 block">Moneda</label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
                 >
-                  <option value="">Seleccionar tipo</option>
-                  <option value="Ciudad Colonial">Ciudad Colonial</option>
-                  <option value="Playa y Descanso">Playa y Descanso</option>
-                  <option value="Cultura y Modernidad">Cultura y Modernidad</option>
-                  <option value="Aventura y Naturaleza">Aventura y Naturaleza</option>
-                  <option value="Gastronomía">Gastronomía</option>
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COP">COP</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Grupo Máximo</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.maxGroupSize}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, maxGroupSize: parseInt(e.target.value) || 1 
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Tipo de Plan *</label>
+                {loadingOptions ? (
+                  <Input placeholder="Cargando tipos..." disabled />
+                ) : (
+                  <Select
+                  value={formData.planType}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, planType: value }))}
+                  >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {planTypes
+                      .filter(type => type && type.trim() !== '') // Filtrar valores vacíos
+                      .map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Dificultad</label>
+                <Select
+                  value={formData.difficultyLevel}
+                  onValueChange={(value: DifficultyLevel) => setFormData(prev => ({ ...prev, difficultyLevel: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={DifficultyLevel.Easy}>Fácil</SelectItem>
+                    <SelectItem value={DifficultyLevel.Moderate}>Moderado</SelectItem>
+                    <SelectItem value={DifficultyLevel.Challenging}>Desafiante</SelectItem>
+                    <SelectItem value={DifficultyLevel.Expert}>Experto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Edad Mínima</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.minAge}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, minAge: parseInt(e.target.value) || 0 
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">URL de Imagen</label>
+              <Input
+                value={formData.imageUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://..."
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Services */}
+        {/* Services Included */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Servicios del Plan</CardTitle>
-              <Button type="button" onClick={addService} size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Agregar Servicio
+            <CardTitle>Servicios Incluidos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.includesAccommodation}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includesAccommodation: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Incluye Alojamiento</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.includesTransportation}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includesTransportation: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Incluye Transporte</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.includesMeals}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includesMeals: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Incluye Comidas</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.includesGuide}
+                  onChange={(e) => setFormData(prev => ({ ...prev, includesGuide: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Incluye Guía</span>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Highlights */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Destacados del Plan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex space-x-2">
+              <Input
+                value={newHighlight}
+                onChange={(e) => setNewHighlight(e.target.value)}
+                placeholder="Agregar destacado..."
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addHighlight())}
+              />
+              <Button type="button" onClick={addHighlight}>
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            {formData.services.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                No hay servicios agregados. Haz clic en "Agregar Servicio" para comenzar.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {formData.services.map((service) => (
-                  <div key={service.id} className="border rounded-lg p-4 space-y-4">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-medium">Servicio #{service.id}</h4>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeService(service.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Tipo de Servicio</label>
-                        <select
-                          value={service.serviceType}
-                          onChange={(e) => updateService(service.id, 'serviceType', e.target.value)}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="Alojamiento">Alojamiento</option>
-                          <option value="Transporte">Transporte</option>
-                          <option value="Alimentación">Alimentación</option>
-                          <option value="Actividades">Actividades</option>
-                          <option value="Seguros">Seguros</option>
-                          <option value="Guías">Guías</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Nombre del Servicio</label>
-                        <Input
-                          value={service.name}
-                          onChange={(e) => updateService(service.id, 'name', e.target.value)}
-                          placeholder="Ej: Hotel 4 estrellas"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Precio</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={service.price}
-                          onChange={(e) => updateService(service.id, 'price', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium">Descripción</label>
-                      <Input
-                        value={service.description}
-                        onChange={(e) => updateService(service.id, 'description', e.target.value)}
-                        placeholder="Describe el servicio detalladamente..."
-                      />
-                    </div>
-
-                    <div className="flex space-x-4">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={service.isIncluded}
-                          onChange={(e) => updateService(service.id, 'isIncluded', e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">Incluido en el precio base</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={service.isOptional}
-                          onChange={(e) => updateService(service.id, 'isOptional', e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">Servicio opcional</span>
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            
+            <div className="flex flex-wrap gap-2">
+              {formData.highlights.map((highlight, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="flex items-center space-x-1 px-3 py-1 bg-blue-50 text-blue-700 border-blue-200"
+                >
+                  <span>{highlight}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeHighlight(index)}
+                    className="ml-1 text-blue-500 hover:text-blue-700"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -361,6 +499,45 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
         <Card>
           <CardHeader>
             <CardTitle>Qué Incluye</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex space-x-2">
+              <Input
+                value={newInclusion}
+                onChange={(e) => setNewInclusion(e.target.value)}
+                placeholder="Agregar inclusión..."
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInclusion())}
+              />
+              <Button type="button" onClick={addInclusion}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {formData.inclusions.map((inclusion, index) => (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="flex items-center space-x-1 px-3 py-1 bg-green-50 text-green-700 border-green-200"
+                >
+                  <span>{inclusion}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeInclusion(index)}
+                    className="ml-1 text-green-500 hover:text-green-700"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Exclusions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Qué NO Incluye</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex space-x-2">
@@ -399,14 +576,24 @@ export function TravelPlanForm({ tenant, isEditing = false, initialData }: Trave
         {/* Actions */}
         <div className="flex space-x-4">
           <Button type="submit" disabled={isLoading} className="flex-1">
-            <Save className="mr-2 h-4 w-4" />
-            {isLoading ? "Guardando..." : isEditing ? "Actualizar Plan" : "Crear Plan"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                {isEditing ? "Actualizar Plan" : "Crear Plan"}
+              </>
+            )}
           </Button>
           <Button 
             type="button" 
             variant="outline" 
             onClick={() => router.push(`/${tenant}/travel-plans`)}
             className="flex-1"
+            disabled={isLoading}
           >
             Cancelar
           </Button>

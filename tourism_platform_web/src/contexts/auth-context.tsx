@@ -1,60 +1,87 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@/types'
-import { api } from '@/lib/api'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { authService } from '@/lib/auth'
+import { ApiError } from '@/lib/api'
+
+interface User {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  tenantId: string
+  tenantSubdomain: string
+}
 
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   isLoading: boolean
+  error: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      // Validate token and get user info
-      validateToken()
-    } else {
-      setIsLoading(false)
-    }
+    validateToken()
   }, [])
 
   const validateToken = async () => {
     try {
-      const userData = await api.get<User>('/auth/validate')
+      const token = authService.getToken()
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+
+      const userData = await authService.validateToken()
       setUser(userData)
     } catch (error) {
-      localStorage.removeItem('token')
+      authService.logout()
+      setUser(null)
     } finally {
       setIsLoading(false)
     }
   }
 
   const login = async (email: string, password: string) => {
-    const response = await api.post<{ token: string; user: User }>('/auth/login', {
-      email,
-      password,
-    })
+    setError(null)
+    setIsLoading(true)
     
-    localStorage.setItem('token', response.token)
-    setUser(response.user)
+    try {
+      const response = await authService.login({ email, password })
+      setUser(response.user)
+      
+      // Redirect to tenant dashboard
+      router.push(`/${response.user.tenantSubdomain}/dashboard`)
+    } catch (error) {
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : 'Login failed'
+      setError(errorMessage)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
+    authService.logout()
     setUser(null)
+    router.push('/login')
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, error }}>
       {children}
     </AuthContext.Provider>
   )

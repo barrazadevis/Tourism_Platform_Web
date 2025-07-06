@@ -14,60 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Loading } from "@/components/shared/loading"
 import { formatCurrency } from "@/lib/utils"
-
-interface Customer {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  documentNumber: string
-  totalQuotes: number
-  totalBookings: number
-  totalSpent: number
-  createdAt: string
-}
-
-// Datos de ejemplo
-const mockCustomers: Customer[] = [
-  {
-    id: "1",
-    firstName: "María",
-    lastName: "González",
-    email: "maria@email.com",
-    phone: "+57 300 123 4567",
-    documentNumber: "12345678",
-    totalQuotes: 5,
-    totalBookings: 3,
-    totalSpent: 4500000,
-    createdAt: "2024-01-15"
-  },
-  {
-    id: "2", 
-    firstName: "Carlos",
-    lastName: "Ruiz",
-    email: "carlos@email.com",
-    phone: "+57 301 987 6543",
-    documentNumber: "87654321",
-    totalQuotes: 3,
-    totalBookings: 2,
-    totalSpent: 3200000,
-    createdAt: "2024-01-20"
-  },
-  {
-    id: "3",
-    firstName: "Ana",
-    lastName: "Martínez",
-    email: "ana@email.com", 
-    phone: "+57 302 555 1234",
-    documentNumber: "11223344",
-    totalQuotes: 2,
-    totalBookings: 1,
-    totalSpent: 1800000,
-    createdAt: "2024-02-01"
-  }
-]
+import { useApi } from "@/hooks/use-api"
+import { customerService, CustomerResponse } from "@/services/customers"
 
 interface CustomerListProps {
   tenant: string
@@ -75,14 +25,49 @@ interface CustomerListProps {
 
 export function CustomerList({ tenant }: CustomerListProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [customers] = useState<Customer[]>(mockCustomers)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
 
-  const filteredCustomers = customers.filter(customer =>
+  const { data: customers, loading, error, refetch } = useApi<CustomerResponse[]>(
+    () => customerService.getCustomers({ 
+      searchTerm: searchTerm,
+      page,
+      pageSize 
+    }),
+    [searchTerm, page]
+  )
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este cliente?')) return
+    
+    try {
+      await customerService.deleteCustomer(id)
+      refetch()
+    } catch (error) {
+      console.error('Error deleting customer:', error)
+      alert('Error al eliminar el cliente')
+    }
+  }
+
+  if (loading) return <Loading message="Cargando clientes..." />
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">{error}</p>
+        <Button onClick={refetch} variant="outline" className="mt-2">
+          Reintentar
+        </Button>
+      </div>
+    )
+  }
+
+  const filteredCustomers = customers?.filter(customer =>
     customer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.documentNumber.includes(searchTerm)
-  )
+  ) || []
 
   return (
     <div className="space-y-6">
@@ -161,7 +146,11 @@ export function CustomerList({ tenant }: CustomerListProps) {
                           <Edit className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDelete(customer.id)}
+                      >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
@@ -170,6 +159,12 @@ export function CustomerList({ tenant }: CustomerListProps) {
               ))}
             </TableBody>
           </Table>
+
+          {filteredCustomers.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No se encontraron clientes</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
