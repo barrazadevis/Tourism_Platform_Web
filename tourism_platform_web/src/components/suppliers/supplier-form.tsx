@@ -28,12 +28,11 @@ import {
 } from "@/types/supplier"
 
 interface SupplierFormProps {
-  tenant: string
   supplierId?: string // For editing
   isEditing?: boolean
 }
 
-export function SupplierForm({ tenant, supplierId, isEditing = false }: SupplierFormProps) {
+export function SupplierForm({ supplierId, isEditing = false }: SupplierFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState<CreateSupplierDto>({
     name: "",
@@ -128,7 +127,7 @@ export function SupplierForm({ tenant, supplierId, isEditing = false }: Supplier
       } else {
         await supplierService.createSupplier(formData)
       }
-      router.push(`/${tenant}/suppliers`)
+      router.push(`/suppliers`)
     } catch (error) {
       console.error('Error saving supplier:', error)
       alert('Error al guardar el proveedor. Por favor intenta de nuevo.')
@@ -143,7 +142,7 @@ export function SupplierForm({ tenant, supplierId, isEditing = false }: Supplier
     return (
       <div className="text-center py-8">
         <p className="text-red-600">{error}</p>
-        <Button onClick={() => router.push(`/${tenant}/suppliers`)} variant="outline" className="mt-2">
+        <Button onClick={() => router.push(`/suppliers`)} variant="outline" className="mt-2">
           Volver a Proveedores
         </Button>
       </div>
@@ -156,7 +155,7 @@ export function SupplierForm({ tenant, supplierId, isEditing = false }: Supplier
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push(`/${tenant}/suppliers`)}
+            onClick={() => router.push(`/suppliers`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -452,7 +451,7 @@ export function SupplierForm({ tenant, supplierId, isEditing = false }: Supplier
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => router.push(`/${tenant}/suppliers`)}
+            onClick={() => router.push(`/suppliers`)}
             className="flex-1"
             disabled={isLoading}
           >

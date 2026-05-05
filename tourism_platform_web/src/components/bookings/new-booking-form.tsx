@@ -28,11 +28,10 @@ interface QuoteData {
 }
 
 interface NewBookingFormProps {
-  tenant: string
   quoteId?: string
 }
 
-export function NewBookingForm({ tenant, quoteId }: NewBookingFormProps) {
+export function NewBookingForm({ quoteId }: NewBookingFormProps) {
   const router = useRouter()
   const { user } = useAuth()
   
@@ -188,7 +187,7 @@ export function NewBookingForm({ tenant, quoteId }: NewBookingFormProps) {
       const result = await bookingService.createBookingFromQuote(bookingData)
       
       // Redirect to the newly created booking or bookings list
-      router.push(`/${tenant}/bookings/${result.id}`)
+      router.push(`/bookings/${result.id}`)
     } catch (error) {
       console.error('Error creating booking:', error)
       const errorMessage = error instanceof ApiError 
@@ -205,7 +204,7 @@ export function NewBookingForm({ tenant, quoteId }: NewBookingFormProps) {
     return (
       <div className="space-y-6">
         <div className="flex items-center space-x-4">
-          <Link href={`/${tenant}/quotes`}>
+          <Link href={`/quotes`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver
@@ -227,7 +226,7 @@ export function NewBookingForm({ tenant, quoteId }: NewBookingFormProps) {
     return (
       <div className="space-y-6">
         <div className="flex items-center space-x-4">
-          <Link href={`/${tenant}/quotes`}>
+          <Link href={`/quotes`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver
@@ -247,7 +246,7 @@ export function NewBookingForm({ tenant, quoteId }: NewBookingFormProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link href={`/${tenant}/quotes/${quoteId}`}>
+        <Link href={`/quotes/${quoteId}`}>
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver a Cotización
@@ -442,7 +441,7 @@ export function NewBookingForm({ tenant, quoteId }: NewBookingFormProps) {
           <Button type="submit" disabled={isLoading}>
             {isLoading ? "Creando Reserva..." : "Crear Reserva"}
           </Button>
-          <Link href={`/${tenant}/quotes/${quoteId}`}>
+          <Link href={`/quotes/${quoteId}`}>
             <Button type="button" variant="outline">
               Cancelar
             </Button>

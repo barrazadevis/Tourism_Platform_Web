@@ -38,7 +38,7 @@ export const travelPlanService = {
   },
 
   async getDestinations(): Promise<string[]> {
-    return api.get<string[]>('/travelplans/destinations')
+    return api.get<string[]>('/travelplans/destination')
   },
 
   async getPlanTypes(): Promise<string[]> {

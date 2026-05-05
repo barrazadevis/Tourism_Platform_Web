@@ -25,12 +25,11 @@ interface CustomerFormData {
 }
 
 interface CustomerFormProps {
-  tenant: string
   isEditing?: boolean
   customerId?: string
 }
 
-export function CustomerForm({ tenant, isEditing = false, customerId }: CustomerFormProps) {
+export function CustomerForm({ isEditing = false, customerId }: CustomerFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState<CustomerFormData>({
     firstName: "",
@@ -103,8 +102,8 @@ export function CustomerForm({ tenant, isEditing = false, customerId }: Customer
       } else {
         await customerService.createCustomer(customerData)
       }
-      
-      router.push(`/${tenant}/customers`)
+
+      router.push(`/customers`)
     } catch (error) {
       const errorMessage = error instanceof ApiError 
         ? error.message 
@@ -266,7 +265,7 @@ export function CustomerForm({ tenant, isEditing = false, customerId }: Customer
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => router.push(`/${tenant}/customers`)}
+                onClick={() => router.push(`/customers`)}
                 disabled={isLoading}
               >
                 Cancelar

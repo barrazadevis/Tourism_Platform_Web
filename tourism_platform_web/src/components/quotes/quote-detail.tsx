@@ -147,11 +147,10 @@ const getStatusText = (status: QuoteDetailData['status']) => {
 }
 
 interface QuoteDetailProps {
-  tenant: string
   quoteId: string
 }
 
-export function QuoteDetail({ tenant, quoteId }: QuoteDetailProps) {
+export function QuoteDetail({ quoteId }: QuoteDetailProps) {
   const router = useRouter()
   const [quote, setQuote] = useState<QuoteResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -185,7 +184,7 @@ export function QuoteDetail({ tenant, quoteId }: QuoteDetailProps) {
   }
 
   const handleConvertToBooking = () => {
-    router.push(`/${tenant}/bookings/new?quoteId=${quoteId}`)
+    router.push(`/bookings/new?quoteId=${quoteId}`)
   }
 
   const totalPassengers = quote
@@ -205,7 +204,7 @@ export function QuoteDetail({ tenant, quoteId }: QuoteDetailProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href={`/${tenant}/quotes`}>
+          <Link href={`/quotes`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver
@@ -255,7 +254,7 @@ export function QuoteDetail({ tenant, quoteId }: QuoteDetailProps) {
             </Button>
           )}
           
-          <Link href={`/${tenant}/quotes/${quoteId}/edit`}>
+          <Link href={`/quotes/${quoteId}/edit`}>
             <Button variant="outline" size="sm">
               <Edit className="mr-2 h-4 w-4" />
               Editar

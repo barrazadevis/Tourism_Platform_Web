@@ -11,13 +11,22 @@ interface User {
   firstName: string
   lastName: string
   role: string
-  tenantId: string
+  companyId: string
+  companyName: string
+}
+
+interface RegisterData {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
   tenantSubdomain: string
 }
 
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
+  register: (data: RegisterData) => Promise<void>
   logout: () => void
   isLoading: boolean
   error: string | null
@@ -40,14 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = authService.getToken()
       if (!token) {
         setIsLoading(false)
+        logout()
         return
       }
-
-      const userData = await authService.validateToken()
-      setUser(userData)
     } catch (error) {
-      authService.logout()
-      setUser(null)
+      logout()
     } finally {
       setIsLoading(false)
     }
@@ -62,12 +68,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.user)
       
       // Redirect to tenant dashboard
-      router.push(`/${response.user.tenantSubdomain}/dashboard`)
+      router.push(`/`)
     } catch (error) {
       const errorMessage = error instanceof ApiError 
         ? error.message 
         : 'Login failed'
       setError(errorMessage)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const register = async (data: RegisterData) => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const response = await authService.register(data)
+      setUser(response.user)
+      router.push(`/`)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setError(error.message)
+      } else {
+        setError('Error al crear la cuenta')
+      }
       throw error
     } finally {
       setIsLoading(false)
@@ -81,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, error }}>
+    <AuthContext.Provider value={{ user, register, login, logout, isLoading, error }}>
       {children}
     </AuthContext.Provider>
   )

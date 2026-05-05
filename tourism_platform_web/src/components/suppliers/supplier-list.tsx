@@ -50,11 +50,7 @@ import {
   getSupplierIcon
 } from "@/types/supplier"
 
-interface SupplierListProps {
-  tenant: string
-}
-
-export function SupplierList({ tenant }: SupplierListProps) {
+export function SupplierList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [filterCity, setFilterCity] = useState("all")
@@ -165,7 +161,7 @@ export function SupplierList({ tenant }: SupplierListProps) {
           <h1 className="text-3xl font-bold text-gray-900">Proveedores</h1>
           <p className="text-gray-600">Gestiona tu red de proveedores turísticos</p>
         </div>
-        <Link href={`/${tenant}/suppliers/new`}>
+        <Link href={`/suppliers/new`}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Proveedor
@@ -410,12 +406,12 @@ export function SupplierList({ tenant }: SupplierListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center space-x-1">
-                      <Link href={`/${tenant}/suppliers/${supplier.id}`}>
+                      <Link href={`/suppliers/${supplier.id}`}>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Link href={`/${tenant}/suppliers/${supplier.id}/edit`}>
+                      <Link href={`/suppliers/${supplier.id}/edit`}>
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>

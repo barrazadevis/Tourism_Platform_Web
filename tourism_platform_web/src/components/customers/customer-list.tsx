@@ -19,11 +19,7 @@ import { formatCurrency } from "@/lib/utils"
 import { useApi } from "@/hooks/use-api"
 import { customerService, CustomerResponse } from "@/services/customers"
 
-interface CustomerListProps {
-  tenant: string
-}
-
-export function CustomerList({ tenant }: CustomerListProps) {
+export function CustomerList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -76,7 +72,7 @@ export function CustomerList({ tenant }: CustomerListProps) {
           <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
           <p className="text-gray-600">Gestiona tu base de clientes</p>
         </div>
-        <Link href={`/${tenant}/customers/new`}>
+        <Link href={`/customers/new`}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Cliente
@@ -136,12 +132,12 @@ export function CustomerList({ tenant }: CustomerListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center space-x-1">
-                      <Link href={`/${tenant}/customers/${customer.id}`}>
+                      <Link href={`/customers/${customer.id}`}>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Link href={`/${tenant}/customers/${customer.id}/edit`}>
+                      <Link href={`/customers/${customer.id}/edit`}>
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>

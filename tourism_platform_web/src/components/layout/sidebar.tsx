@@ -16,7 +16,8 @@ import {
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Compañía", href: "/company", icon: LayoutDashboard },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Cotizaciones", href: "/quotes", icon: FileText },
   { name: "Reservas", href: "/bookings", icon: Calendar },
@@ -25,13 +26,10 @@ const navigation = [
   { name: "Planes de Viaje", href: "/travel-plans", icon: MapPin },
   { name: "Documentos", href: "/documents", icon: FileUp },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Destinos", href: "/destinations", icon: MapPin }
 ]
 
-interface SidebarProps {
-  tenant: string
-}
-
-export function Sidebar({ tenant }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname()
 
   return (
@@ -42,7 +40,7 @@ export function Sidebar({ tenant }: SidebarProps) {
       
       <nav className="flex-1 space-y-1 px-4 py-4">
         {navigation.map((item) => {
-          const href = `/${tenant}${item.href}`
+          const href = `${item.href}`
           const isActive = pathname === href
           
           return (

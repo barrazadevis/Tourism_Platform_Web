@@ -7,11 +7,7 @@ import { useApi } from "@/hooks/use-api"
 import { analyticsService } from "@/services/analyticsService"
 import { formatCurrency, formatNumber, getGrowthColor, getGrowthIcon } from "@/types/analytics"
 
-interface DashboardProps {
-  tenant: string
-}
-
-export function Dashboard({ tenant }: DashboardProps) {
+export function Dashboard( ) {
   const { data: dashboardStats, loading, error, refetch } = useApi(
     () => analyticsService.getDashboardStats(),
     []

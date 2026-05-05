@@ -64,11 +64,10 @@ interface AddPassengerDto {
 }
 
 interface BookingDetailProps {
-  tenant: string
   bookingId: string
 }
 
-export function BookingDetail({ tenant, bookingId }: BookingDetailProps) {
+export function BookingDetail({ bookingId }: BookingDetailProps) {
   const router = useRouter()
   const { user } = useAuth()
   
@@ -241,7 +240,7 @@ export function BookingDetail({ tenant, bookingId }: BookingDetailProps) {
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push(`/${tenant}/bookings`)}
+            onClick={() => router.push(`/bookings`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -264,7 +263,7 @@ export function BookingDetail({ tenant, bookingId }: BookingDetailProps) {
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push(`/${tenant}/bookings`)}
+            onClick={() => router.push(`/bookings`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -286,7 +285,7 @@ export function BookingDetail({ tenant, bookingId }: BookingDetailProps) {
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push(`/${tenant}/bookings`)}
+            onClick={() => router.push(`/bookings`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver

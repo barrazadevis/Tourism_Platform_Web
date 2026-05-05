@@ -14,11 +14,7 @@ import {
 import { AnalyticsOverview } from "@/components/analytics/tabs/analytics-overview"
 import { RevenueReports } from "@/components/analytics/tabs/revenue-reports"
 
-interface AnalyticsProps {
-  tenant: string
-}
-
-export function Analytics({ tenant }: AnalyticsProps) {
+export function Analytics() {
   const [activeTab, setActiveTab] = useState("overview")
 
   const tabs = [
@@ -26,13 +22,13 @@ export function Analytics({ tenant }: AnalyticsProps) {
       id: "overview",
       label: "Resumen",
       icon: BarChart3,
-      component: <AnalyticsOverview tenant={tenant} />
+      component: <AnalyticsOverview/>
     },
     {
       id: "revenue",
       label: "Ingresos",
       icon: DollarSign,
-      component: <RevenueReports tenant={tenant} />
+      component: <RevenueReports/>
     },
     {
       id: "customers",

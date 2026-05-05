@@ -18,25 +18,26 @@ import { Loading } from "@/components/shared/loading"
 import { formatCurrency } from "@/lib/utils"
 import { useApi } from "@/hooks/use-api"
 import { travelPlanService } from "@/services/travelPlanService"
+import { destinationService } from "@/services/destinationService"
 import { 
   TravelPlanResponseDto, 
   CreateTravelPlanDto, 
   UpdateTravelPlanDto,
   DifficultyLevel 
 } from "@/types/travel-plan"
+import { DestinationResponseDto } from "@/types/destination"
 
 interface TravelPlanFormProps {
-  tenant: string
   planId?: string // For editing
   isEditing?: boolean
 }
 
-export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlanFormProps) {
+export function TravelPlanForm({ planId, isEditing = false }: TravelPlanFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState<CreateTravelPlanDto>({
     name: "",
     description: "",
-    destination: "",
+    destinationId: "",
     planType: "",
     duration: 1,
     price: 0,
@@ -60,7 +61,7 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
   const [newInclusion, setNewInclusion] = useState("")
   const [newExclusion, setNewExclusion] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [destinations, setDestinations] = useState<string[]>([])
+  const [destinations, setDestinations] = useState<DestinationResponseDto[]>([])
   const [planTypes, setPlanTypes] = useState<string[]>([])
   const [loadingOptions, setLoadingOptions] = useState(false)
 
@@ -81,7 +82,7 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
       setFormData({
         name: existingPlan.name,
         description: existingPlan.description,
-        destination: existingPlan.destination,
+        destinationId: existingPlan.destinationId,
         planType: existingPlan.planType,
         duration: existingPlan.duration,
         price: existingPlan.price,
@@ -107,12 +108,12 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
     setLoadingOptions(true)
     try {
       const [destinationsData, planTypesData] = await Promise.all([
-        travelPlanService.getDestinations(),
+        destinationService.getDestinations(),
         travelPlanService.getPlanTypes()
-      ])
+      ]) 
       
       // Filtrar datos vacíos antes de establecer en el estado
-      setDestinations(destinationsData.filter(dest => dest && dest.trim() !== ''))
+      setDestinations(destinationsData.filter(dest => dest && dest != null))
       setPlanTypes(planTypesData.filter(type => type && type.trim() !== ''))
     } catch (error) {
       console.error('Error loading form options:', error)
@@ -188,7 +189,7 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
       } else {
         await travelPlanService.createTravelPlan(formData)
       }
-      router.push(`/${tenant}/travel-plans`)
+      router.push(`/travel-plans`)
     } catch (error) {
       console.error('Error saving travel plan:', error)
       alert('Error al guardar el plan de viaje. Por favor intenta de nuevo.')
@@ -203,7 +204,7 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
     return (
       <div className="text-center py-8">
         <p className="text-red-600">{error}</p>
-        <Button onClick={() => router.push(`/${tenant}/travel-plans`)} variant="outline" className="mt-2">
+        <Button onClick={() => router.push(`/travel-plans`)} variant="outline" className="mt-2">
           Volver a Planes
         </Button>
       </div>
@@ -216,7 +217,7 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push(`/${tenant}/travel-plans`)}
+            onClick={() => router.push(`/travel-plans`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -261,17 +262,17 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
                   <Input placeholder="Cargando destinos..." disabled />
                 ) : (
                   <Select
-                    value={formData.destination}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, destination: value }))}
+                    value={formData.destinationId}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, destinationId: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar destino" />
                     </SelectTrigger>
                     <SelectContent>
                       {destinations
-                        .filter(dest => dest && dest.trim() !== '') // Filtrar valores vacíos
+                        .filter(dest => dest && dest.id !== '') // Filtrar valores vacíos
                         .map(dest => (
-                          <SelectItem key={dest} value={dest}>{dest}</SelectItem>
+                          <SelectItem key={dest.id} value={dest.id}>{dest.city}</SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
@@ -344,60 +345,6 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
                 />
               </div>
             </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Tipo de Plan *</label>
-                {loadingOptions ? (
-                  <Input placeholder="Cargando tipos..." disabled />
-                ) : (
-                  <Select
-                  value={formData.planType}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, planType: value }))}
-                  >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {planTypes
-                      .filter(type => type && type.trim() !== '') // Filtrar valores vacíos
-                      .map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Dificultad</label>
-                <Select
-                  value={formData.difficultyLevel}
-                  onValueChange={(value: DifficultyLevel) => setFormData(prev => ({ ...prev, difficultyLevel: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={DifficultyLevel.Easy}>Fácil</SelectItem>
-                    <SelectItem value={DifficultyLevel.Moderate}>Moderado</SelectItem>
-                    <SelectItem value={DifficultyLevel.Challenging}>Desafiante</SelectItem>
-                    <SelectItem value={DifficultyLevel.Expert}>Experto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Edad Mínima</label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.minAge}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, minAge: parseInt(e.target.value) || 0 
-                  }))}
-                />
-              </div>
-            </div>
-
             <div>
               <label className="text-sm font-medium mb-2 block">URL de Imagen</label>
               <Input
@@ -591,7 +538,7 @@ export function TravelPlanForm({ tenant, planId, isEditing = false }: TravelPlan
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => router.push(`/${tenant}/travel-plans`)}
+            onClick={() => router.push(`/travel-plans`)}
             className="flex-1"
             disabled={isLoading}
           >

@@ -20,11 +20,7 @@ import { useApi } from "@/hooks/use-api"
 import { travelPlanService } from "@/services/travelPlanService"
 import { TravelPlanResponseDto, TravelPlanSearchParams } from "@/types/travel-plan"
 
-interface TravelPlanListProps {
-  tenant: string
-}
-
-export function TravelPlanList({ tenant }: TravelPlanListProps) {
+export function TravelPlanList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterDestination, setFilterDestination] = useState("")
   const [filterType, setFilterType] = useState("")
@@ -132,7 +128,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
           <h1 className="text-3xl font-bold text-gray-900">Planes de Viaje</h1>
           <p className="text-gray-600">Gestiona tu catálogo de planes turísticos</p>
         </div>
-        <Link href={`/${tenant}/travel-plans/new`}>
+        <Link href={`/travel-plans/new`}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Plan
@@ -334,7 +330,7 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
                   <div className="absolute bottom-4 left-4 text-white">
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-1" />
-                      <span className="text-sm">{plan.destination}</span>
+                      <span className="text-sm">{plan.destinationId}</span>
                     </div>
                   </div>
                 </div>
@@ -384,12 +380,12 @@ export function TravelPlanList({ tenant }: TravelPlanListProps) {
                               <ToggleLeft className="h-4 w-4 text-gray-400" />
                             )}
                           </Button>
-                          <Link href={`/${tenant}/travel-plans/${plan.id}`}>
+                          <Link href={`/travel-plans/${plan.id}`}>
                             <Button variant="outline" size="sm">
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Link href={`/${tenant}/travel-plans/${plan.id}/edit`}>
+                          <Link href={`/travel-plans/${plan.id}/edit`}>
                             <Button variant="outline" size="sm">
                               <Edit className="h-4 w-4" />
                             </Button>

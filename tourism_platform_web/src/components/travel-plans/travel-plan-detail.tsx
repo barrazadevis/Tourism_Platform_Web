@@ -29,11 +29,10 @@ import { travelPlanService } from "@/services/travelPlanService"
 import { TravelPlanResponseDto, DifficultyLevel } from "@/types/travel-plan"
 
 interface TravelPlanDetailProps {
-  tenant: string
   planId: string
 }
 
-export function TravelPlanDetail({ tenant, planId }: TravelPlanDetailProps) {
+export function TravelPlanDetail({ planId }: TravelPlanDetailProps) {
   const router = useRouter()
   const [isToggling, setIsToggling] = useState(false)
 
@@ -84,7 +83,7 @@ export function TravelPlanDetail({ tenant, planId }: TravelPlanDetailProps) {
     return (
       <div className="text-center py-8">
         <p className="text-gray-600">Plan de viaje no encontrado</p>
-        <Button onClick={() => router.push(`/${tenant}/travel-plans`)} variant="outline" className="mt-2">
+        <Button onClick={() => router.push(`/travel-plans`)} variant="outline" className="mt-2">
           Volver a Planes
         </Button>
       </div>
@@ -97,7 +96,7 @@ export function TravelPlanDetail({ tenant, planId }: TravelPlanDetailProps) {
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push(`/${tenant}/travel-plans`)}
+            onClick={() => router.push(`/travel-plans`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -106,7 +105,7 @@ export function TravelPlanDetail({ tenant, planId }: TravelPlanDetailProps) {
             <h1 className="text-3xl font-bold text-gray-900">{plan.name}</h1>
             <p className="text-gray-600 flex items-center mt-1">
               <MapPin className="h-4 w-4 mr-1" />
-              {plan.destination}
+              {plan.destinationId}
             </p>
           </div>
         </div>
@@ -125,7 +124,7 @@ export function TravelPlanDetail({ tenant, planId }: TravelPlanDetailProps) {
               <ToggleLeft className="h-5 w-5 text-gray-400" />
             )}
           </Button>
-          <Link href={`/${tenant}/travel-plans/${planId}/edit`}>
+          <Link href={`/travel-plans/${planId}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
               Editar Plan
@@ -394,19 +393,19 @@ export function TravelPlanDetail({ tenant, planId }: TravelPlanDetailProps) {
               <CardTitle>Acciones Rápidas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Link href={`/${tenant}/quotes/new?planId=${planId}`}>
+              <Link href={`/quotes/new?planId=${planId}`}>
                 <Button className="w-full">
                   <FileText className="mr-2 h-4 w-4" />
                   Crear Cotización
                 </Button>
               </Link>
-              <Link href={`/${tenant}/quotes?planId=${planId}`}>
+              <Link href={`/quotes?planId=${planId}`}>
                 <Button variant="outline" className="w-full">
                   <Users className="mr-2 h-4 w-4" />
                   Ver Cotizaciones
                 </Button>
               </Link>
-              <Link href={`/${tenant}/bookings?planId=${planId}`}>
+              <Link href={`/bookings?planId=${planId}`}>
                 <Button variant="outline" className="w-full">
                   <Calendar className="mr-2 h-4 w-4" />
                   Ver Reservas

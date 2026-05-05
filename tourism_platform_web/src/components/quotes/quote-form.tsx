@@ -58,12 +58,11 @@ interface QuoteFormData {
 }
 
 interface QuoteFormProps {
-  tenant: string
   isEditing?: boolean
   quoteId?: string
 }
 
-export function QuoteForm({ tenant, isEditing = false, quoteId }: QuoteFormProps) {
+export function QuoteForm({ isEditing = false, quoteId }: QuoteFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState<QuoteFormData>({
     id: "",
@@ -292,7 +291,7 @@ export function QuoteForm({ tenant, isEditing = false, quoteId }: QuoteFormProps
         await quoteService.createQuote(quoteData)
       }
       
-      router.push(`/${tenant}/quotes`)
+      router.push(`/quotes`)
     } catch (error) {
       const errorMessage = error instanceof ApiError 
         ? error.message 
@@ -706,7 +705,7 @@ export function QuoteForm({ tenant, isEditing = false, quoteId }: QuoteFormProps
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => router.push(`/${tenant}/quotes`)}
+            onClick={() => router.push(`/quotes`)}
             disabled={isLoading}
           >
             Cancelar

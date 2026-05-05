@@ -24,7 +24,7 @@ export interface TravelPlan {
   id: string
   name: string
   description: string
-  destination: string
+  destinationId: string
   planType: string
   duration: number // days
   price: number
@@ -69,7 +69,7 @@ export interface TravelPlanResponseDto extends TravelPlan {
 export interface CreateTravelPlanDto {
   name: string
   description: string
-  destination: string
+  destinationId: string
   planType: string
   duration: number
   price: number

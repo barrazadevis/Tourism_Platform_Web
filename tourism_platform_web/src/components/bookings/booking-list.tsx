@@ -63,11 +63,7 @@ const getPaymentStatusText = (status: Booking['paymentStatus']) => {
   }
 }
 
-interface BookingListProps {
-  tenant: string
-}
-
-export function BookingList({ tenant }: BookingListProps) {
+export function BookingList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -99,7 +95,7 @@ export function BookingList({ tenant }: BookingListProps) {
           <h1 className="text-3xl font-bold text-gray-900">Reservas</h1>
           <p className="text-gray-600">Gestiona las reservas confirmadas</p>
         </div>
-        <Link href={`/${tenant}/quotes`}>
+        <Link href={`/quotes`}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Crear desde Cotización
@@ -250,7 +246,7 @@ export function BookingList({ tenant }: BookingListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center space-x-1">
-                      <Link href={`/${tenant}/bookings/${booking.id}`}>
+                      <Link href={`/bookings/${booking.id}`}>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>

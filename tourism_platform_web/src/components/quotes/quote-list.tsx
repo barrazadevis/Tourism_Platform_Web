@@ -48,7 +48,7 @@ interface QuoteListProps {
   tenant: string
 }
 
-export function QuoteList({ tenant }: QuoteListProps) {
+export function QuoteList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -83,7 +83,7 @@ export function QuoteList({ tenant }: QuoteListProps) {
           <h1 className="text-3xl font-bold text-gray-900">Cotizaciones</h1>
           <p className="text-gray-600">Gestiona las cotizaciones de viaje</p>
         </div>
-        <Link href={`/${tenant}/quotes/new`}>
+        <Link href={`/quotes/new`}>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Nueva Cotización
@@ -203,12 +203,12 @@ export function QuoteList({ tenant }: QuoteListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center space-x-1">
-                      <Link href={`/${tenant}/quotes/${quote.id}`}>
+                      <Link href={`/quotes/${quote.id}`}>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Link href={`/${tenant}/quotes/${quote.id}/edit`}>
+                      <Link href={`/quotes/${quote.id}/edit`}>
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>

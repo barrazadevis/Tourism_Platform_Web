@@ -43,7 +43,7 @@ interface RevenueReportsProps {
   tenant: string
 }
 
-export function RevenueReports({ tenant }: RevenueReportsProps) {
+export function RevenueReports() {
   const [fromDate, setFromDate] = useState(() => {
     const date = new Date()
     date.setMonth(date.getMonth() - 1)

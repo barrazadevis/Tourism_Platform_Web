@@ -71,7 +71,7 @@ interface DocumentListProps {
   tenant: string
 }
 
-export function DocumentList({ tenant }: DocumentListProps) {
+export function DocumentList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("")
   const [filterBooking, setFilterBooking] = useState("")

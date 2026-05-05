@@ -39,7 +39,7 @@ interface AnalyticsOverviewProps {
   tenant: string
 }
 
-export function AnalyticsOverview({ tenant }: AnalyticsOverviewProps) {
+export function AnalyticsOverview() {
   const [selectedPeriod, setSelectedPeriod] = useState("thisMonth")
   const [selectedMetric, setSelectedMetric] = useState("revenue")
 

@@ -21,8 +21,8 @@ interface AuthResponse {
     firstName: string
     lastName: string
     role: string
-    tenantId: string
-    tenantSubdomain: string
+    companyId: string
+    companyName: string
   }
 }
 
@@ -32,8 +32,8 @@ interface User {
   firstName: string
   lastName: string
   role: string
-  tenantId: string
-  tenantSubdomain: string
+  companyId: string
+  companyName: string
 }
 
 export const authService = {
@@ -65,15 +65,6 @@ export const authService = {
       return response
     } catch (error) {
       console.error('Register error:', error)
-      throw error
-    }
-  },
-
-  async validateToken(): Promise<User> {
-    try {
-      return await api.post<User>('/auth/validate')
-    } catch (error) {
-      this.logout()
       throw error
     }
   },

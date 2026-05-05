@@ -86,7 +86,7 @@ interface PaymentListProps {
   tenant: string
 }
 
-export function PaymentList({ tenant }: PaymentListProps) {
+export function PaymentList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
   const [showNewPayment, setShowNewPayment] = useState(false)
@@ -375,7 +375,7 @@ export function PaymentList({ tenant }: PaymentListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center space-x-1">
-                      <Link href={`/${tenant}/payments/${payment.id}`}>
+                      <Link href={`/payments/${payment.id}`}>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
