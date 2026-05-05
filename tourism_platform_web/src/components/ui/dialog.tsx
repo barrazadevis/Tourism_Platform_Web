@@ -16,7 +16,7 @@ export function Dialog({ open, onOpenChange, children, ...props }: DialogProps) 
         className="fixed inset-0 bg-black/50" 
         onClick={() => onOpenChange(false)}
       />
-      <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+      <div className="relative bg-card text-card-foreground rounded-lg shadow-xl max-w-md w-full mx-4 border border-border">
         {children}
       </div>
     </div>
@@ -25,7 +25,7 @@ export function Dialog({ open, onOpenChange, children, ...props }: DialogProps) 
 
 export function DialogHeader({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center justify-between p-6 border-b", className)} {...props}>
+    <div className={cn("flex items-center justify-between p-6 border-b border-border", className)} {...props}>
       {children}
     </div>
   )
@@ -51,7 +51,7 @@ export function DialogClose({ onClose, className, ...props }: { onClose: () => v
   return (
     <button
       onClick={onClose}
-      className={cn("text-gray-400 hover:text-gray-600", className)}
+      className={cn("text-muted-foreground hover:text-foreground transition-colors", className)}
       {...props}
     >
       <X className="h-5 w-5" />

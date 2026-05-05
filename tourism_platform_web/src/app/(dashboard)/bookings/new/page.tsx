@@ -1,9 +1,10 @@
 import { NewBookingForm } from "@/components/bookings/new-booking-form"
 
 interface NewBookingPageProps {
-  searchParams: { quoteId?: string }
+  searchParams: Promise<{ quoteId?: string }>
 }
 
-export default function NewBookingPage({ searchParams }: NewBookingPageProps) {
-  return <NewBookingForm quoteId={searchParams.quoteId} />
+export default async function NewBookingPage({ searchParams }: NewBookingPageProps) {
+  const resolvedParams = await searchParams;
+  return <NewBookingForm quoteId={resolvedParams.quoteId} />
 }

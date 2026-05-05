@@ -1,14 +1,15 @@
 import { CustomerForm } from "@/components/customers/customer-form"
 
 interface EditCustomerPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export default function EditCustomerPage({ params }: EditCustomerPageProps) {
+export default async function EditCustomerPage({ params }: EditCustomerPageProps) {
+  const resolvedParams = await params;
   return (
     <CustomerForm 
       isEditing={true}
-      customerId={params.id}
+      customerId={resolvedParams.id}
     />
   )
 }

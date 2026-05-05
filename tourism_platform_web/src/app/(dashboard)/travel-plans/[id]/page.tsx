@@ -1,9 +1,10 @@
 import { TravelPlanDetail } from "@/components/travel-plans/travel-plan-detail"
 
 interface TravelPlanDetailPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export default function TravelPlanDetailPage({ params }: TravelPlanDetailPageProps) {
-  return <TravelPlanDetail planId={params.id} />
+export default async function TravelPlanDetailPage({ params }: TravelPlanDetailPageProps) {
+  const resolvedParams = await params;
+  return <TravelPlanDetail planId={resolvedParams.id} />
 }

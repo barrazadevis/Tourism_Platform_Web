@@ -1,9 +1,10 @@
 import { BookingDetail } from "@/components/bookings/booking-detail"
 
 interface BookingDetailPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export default function BookingDetailPage({ params }: BookingDetailPageProps) {
-  return <BookingDetail bookingId={params.id} />
+export default async function BookingDetailPage({ params }: BookingDetailPageProps) {
+  const resolvedParams = await params;
+  return <BookingDetail bookingId={resolvedParams.id} />
 }

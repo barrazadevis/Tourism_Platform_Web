@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { useTenant } from "@/contexts/tenant-context" // Necesario para obtener el tenant actual
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,15 +12,9 @@ export function RegisterForm() {
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const { register, isLoading, error } = useAuth()
-  const { currentTenant } = useTenant() // Obtener el tenant actual
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!currentTenant) {
-      console.error('No se pudo determinar el tenant')
-      return
-    }
     
     try {
       await register({
@@ -29,7 +22,7 @@ export function RegisterForm() {
         password,
         firstName,
         lastName,
-        tenantSubdomain: currentTenant.subdomain
+        tenantSubdomain: ""
       })
     } catch (error) {
       console.error('Register failed:', error)
@@ -42,11 +35,6 @@ export function RegisterForm() {
         <CardTitle className="text-2xl font-bold text-primary">
           Crear Cuenta
         </CardTitle>
-        {currentTenant && (
-          <p className="text-sm text-muted-foreground">
-            Registrándose en: {currentTenant.name}
-          </p>
-        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -107,7 +95,7 @@ export function RegisterForm() {
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isLoading || !currentTenant}
+            disabled={isLoading}
           >
             {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
           </Button>

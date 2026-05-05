@@ -1,14 +1,15 @@
 import { QuoteForm } from "@/components/quotes/quote-form"
 
 interface EditQuotePageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
-export default function EditQuotePage({ params }: EditQuotePageProps) {
+export default async function EditQuotePage({ params }: EditQuotePageProps) {
+  const resolvedParams = await params;
   return (
     <QuoteForm
       isEditing={true}
-      quoteId={params.id}
+      quoteId={resolvedParams.id}
     />
   )
 }

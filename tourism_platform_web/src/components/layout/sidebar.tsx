@@ -11,13 +11,14 @@ import {
   Truck,
   MapPin,
   FileUp,
-  BarChart3
+  BarChart3,
+  Building2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Compañía", href: "/company", icon: LayoutDashboard },
+  { name: "Compañías", href: "/companies", icon: Building2 },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Cotizaciones", href: "/quotes", icon: FileText },
   { name: "Reservas", href: "/bookings", icon: Calendar },
@@ -33,9 +34,11 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full w-64 flex-col bg-white border-r">
-      <div className="flex h-16 items-center px-6 border-b">
-        <h1 className="text-xl font-bold text-primary">TourismPro</h1>
+    <div className="flex h-full w-64 flex-col glass border-r border-border/50 z-20">
+      <div className="flex h-16 items-center px-6 border-b border-border/50">
+        <h1 className="text-2xl font-black bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+          TourismPro
+        </h1>
       </div>
       
       <nav className="flex-1 space-y-1 px-4 py-4">
@@ -48,16 +51,16 @@ export function Sidebar() {
               key={item.name}
               href={href}
               className={cn(
-                "group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors",
+                "group flex items-center px-3 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200",
                 isActive
-                  ? "bg-primary text-white"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
               )}
             >
               <item.icon
                 className={cn(
-                  "mr-3 h-5 w-5 flex-shrink-0",
-                  isActive ? "text-white" : "text-gray-400 group-hover:text-gray-500"
+                  "mr-3 h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110",
+                  isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary"
                 )}
               />
               {item.name}
