@@ -35,7 +35,7 @@ export function CompanyTable({ companies, onEdit, onToggleStatus }: CompanyTable
                   {company.isActive ? "Activa" : "Inactiva"}
                 </Badge>
               </TableCell>
-              <TableCell>{company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt).toLocaleDateString() : 'N/A'}</TableCell>
+              <TableCell>{company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'N/A'}</TableCell>
               <TableCell>{company.usersCount}</TableCell>
               <TableCell>{company.applicationName || company.applicationId}</TableCell>
               <TableCell className="text-right">

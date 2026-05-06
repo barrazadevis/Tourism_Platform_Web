@@ -35,7 +35,7 @@ export function CompanyCard({ company, onEdit, onToggleStatus }: CompanyCardProp
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>Vence: <strong className="text-foreground">{company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt).toLocaleDateString() : 'N/A'}</strong></span>
+            <span>Vence: <strong className="text-foreground">{company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'N/A'}</strong></span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />

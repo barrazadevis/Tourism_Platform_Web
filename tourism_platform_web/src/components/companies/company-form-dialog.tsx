@@ -21,6 +21,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSave }: Compa
     subscriptionEndsAt: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (company && open) {
@@ -30,6 +31,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSave }: Compa
         applicationId: company.applicationId,
         subscriptionEndsAt: company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt).toISOString().split('T')[0] : ""
       });
+      setErrorMsg("");
     } else if (open) {
       setFormData({
         name: "",
@@ -37,17 +39,28 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSave }: Compa
         applicationId: 1,
         subscriptionEndsAt: ""
       });
+      setErrorMsg("");
     }
   }, [company, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg("");
     try {
-      await onSave(formData as CreateCompanyRequest);
+      const dataToSave = { ...formData };
+      if (dataToSave.subscriptionEndsAt) {
+        // Enviar como UTC explicitamente (Ej. 2026-05-05T00:00:00Z) para evitar error de PostgreSQL Unspecified Kind
+        dataToSave.subscriptionEndsAt = new Date(dataToSave.subscriptionEndsAt).toISOString();
+      } else {
+        dataToSave.subscriptionEndsAt = null;
+      }
+      
+      await onSave(dataToSave as CreateCompanyRequest);
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save company", error);
+      setErrorMsg(error?.message || "Ocurrió un error al guardar la compañía.");
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +96,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSave }: Compa
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Basic">Básico</SelectItem>
-                <SelectItem value="Pro">Pro</SelectItem>
+                <SelectItem value="Premium">Premium</SelectItem>
                 <SelectItem value="Enterprise">Enterprise</SelectItem>
               </SelectContent>
             </Select>
@@ -110,6 +123,12 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSave }: Compa
               onChange={(e) => setFormData({ ...formData, subscriptionEndsAt: e.target.value })} 
             />
           </div>
+
+          {errorMsg && (
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+              {errorMsg}
+            </div>
+          )}
 
           <div className="pt-4 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
